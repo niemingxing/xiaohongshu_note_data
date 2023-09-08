@@ -1,6 +1,7 @@
 ﻿let currentDomain = window.location.hostname;
 let currentUrl = window.location.href;
 let downloadData = [];
+let downloadUserData = [];
 /**
  * 保存内容为csv文件
  * @param csvContent
@@ -23,7 +24,7 @@ function downloadCsv(csvContent)
 function initDownloadButton() {
 	const html = '<div class="gpt-sr-container">\n' +
 		'    <div class="gpt-sr-sidebar">\n' +
-		'      <button id="gpt-sr-toggleButton">笔记下载</button>\n' +
+		'      <button id="xhs-sr-toggleButton">数据下载</button>\n' +
 		'    </div>\n' +
 		'  </div>\n' +
 		'  \n' +
@@ -39,7 +40,7 @@ function initDownloadButton() {
 	const popupElement = document.createElement("div");
 	popupElement.innerHTML = html;
 	document.body.appendChild(popupElement);
-	document.querySelector("#gpt-sr-toggleButton").addEventListener("click", function() {
+	document.querySelector("#xhs-sr-toggleButton").addEventListener("click", function() {
 		this.disabled = true;
 		chrome.runtime.sendMessage({"type":"check_mkey"}, function (response) {
 			console.log(response.farewell)
@@ -49,19 +50,16 @@ function initDownloadButton() {
 
 function activiteDownloadButton()
 {
-	document.querySelector("#gpt-sr-toggleButton").disabled = false;
+	document.querySelector("#xhs-sr-toggleButton").disabled = false;
 }
 
 function initOtherActon()
 {
 	let pageType = getPageType();
-	if(pageType == "search_result")
-	{
-		setInterval(function (){
-			updateDownloadButtonVideoCount();
-			getSearchVideoData();
-		},1500);
-	}
+	setInterval(function (){
+		updateDownloadButtonVideoCount();
+		getSearchVideoData();
+	},1500);
 }
 
 /**
@@ -69,20 +67,20 @@ function initOtherActon()
  */
 function initPromptMessagePopup()
 {
-	let html = "<div id=\"nmx_video_popup\" class=\"custom-popup\">\n" +
+	let html = "<div id=\"nmx_xhs_popup\" class=\"custom-popup\">\n" +
 		"\t\t<div class=\"custom-popup-overlay\"></div>\n" +
 		"\t\t<div class=\"custom-popup-content\">\n" +
-		"\t\t\t<span id=\"nmx_video_popup_message\" class=\"custom-popup-question\"></span>\n" +
-		"\t\t\t<button id=\"nmx_video_close_popupbtn\" class=\"custom-popup-close-btn\">确认</button>\n" +
+		"\t\t\t<span id=\"nmx_xhs_popup_message\" class=\"custom-popup-question\"></span>\n" +
+		"\t\t\t<button id=\"nmx_xhs_close_popupbtn\" class=\"custom-popup-close-btn\">确认</button>\n" +
 		"\t\t</div>\n" +
 		"\t</div>";
 	const popupElement = document.createElement("div");
 	popupElement.innerHTML = html;
 	document.body.appendChild(popupElement);
 	// 获取弹窗元素
-	const popup = document.getElementById('nmx_video_popup');
+	const popup = document.getElementById('nmx_xhs_popup');
 	// 获取关闭按钮元素
-	const closeButton = document.getElementById('nmx_video_close_popupbtn');
+	const closeButton = document.getElementById('nmx_xhs_close_popupbtn');
 
 	// 点击关闭按钮关闭弹窗
 	closeButton.addEventListener('click', function (){
@@ -93,15 +91,15 @@ function initPromptMessagePopup()
 // 显示弹窗并设置错误提示文字
 function showPromptMessagePopup(message,type =1) {
 	// 获取弹窗元素
-	const popup = document.getElementById('nmx_video_popup');
+	const popup = document.getElementById('nmx_xhs_popup');
 	// 获取错误提示元素
-	const errorText = document.getElementById('nmx_video_popup_message');
+	const errorText = document.getElementById('nmx_xhs_popup_message');
 	errorText.textContent = message;
 	popup.style.display = 'block';
 	if(type == 2)
 	{
 		// 获取关闭按钮元素
-		const closeButton = document.getElementById('nmx_video_close_popupbtn');
+		const closeButton = document.getElementById('nmx_xhs_close_popupbtn');
 		closeButton.style.display = 'none';
 		setTimeout(function (){
 			closeButton.click();
@@ -126,28 +124,31 @@ function addStylesheet(url) {
  */
 function startDownload()
 {
-	let pageType = getPageType();
-	if(pageType == "search_result")
-	{
-		startVideoListDataDownload();
-	}
+	startDataDownload();
 }
 
 /**
- * 视频数据下载
+ * 数据下载
  */
-function startVideoListDataDownload()
+function startDataDownload()
 {
-	let videoListData = downloadData;
+	let listData = [];
 	let header = [];
 	let keys = []
 	let pageType = getPageType();
-	if(pageType == "search_result")
+	if(pageType == "search_result_note" || pageType == "user_profile")
 	{
+		listData = downloadData;
 		header = ["博主名","博主地址","笔记标题","笔记地址","点赞","点赞数"];
 		keys = ["author","author_url","title","url","like_text","like_nums"];
 	}
-	let csvContent = convertToCSVContent(videoListData,header,keys);
+	else if(pageType == "search_result_user")
+	{
+		listData = downloadUserData;
+		header = ["博主名","博主地址","小红书号","粉丝","粉丝数","笔记数"];
+		keys = ["author","author_url","xhs_no","fans_text","fans_nums","note_nums"];
+	}
+	let csvContent = convertToCSVContent(listData,header,keys);
 	downloadCsv(csvContent);
 }
 
@@ -158,10 +159,22 @@ function startVideoListDataDownload()
 function getPageType()
 {
 	currentUrl = window.location.href;
-	let pageType;
-	if(currentUrl.includes("https://www.xiaohongshu.com/search_result/"))
+	let pageType = '';
+	console.log(currentUrl);
+	if(currentUrl.includes("https://www.xiaohongshu.com/search_result"))
 	{
-		pageType = "search_result";
+		if(currentUrl.includes("search_type=user"))
+		{
+			pageType = "search_result_user";
+		}
+		else
+		{
+			pageType = "search_result_note";
+		}
+	}
+	else if(currentUrl.includes("https://www.xiaohongshu.com/user/profile"))
+	{
+		pageType = "user_profile";
 	}
 	console.log(pageType);
 	return pageType;
@@ -172,9 +185,17 @@ function getPageType()
  */
 function updateDownloadButtonVideoCount()
 {
-	let buttonElement = document.querySelector("#gpt-sr-toggleButton");
-	let videoNums = getSearchVideoCount();
-	buttonElement.textContent = "笔记下载(" + videoNums + ")";
+	let buttonElement = document.querySelector("#xhs-sr-toggleButton");
+	let dataNums = getSearchVideoCount();
+	let pageType = getPageType();
+	if(pageType == "search_result_note" || pageType == "user_profile")
+	{
+		buttonElement.textContent = "笔记数据下载(" + dataNums + ")";
+	}
+	else if(pageType == "search_result_user")
+	{
+		buttonElement.textContent = "用户数据下载(" + dataNums + ")";
+	}
 }
 
 /**
@@ -183,7 +204,16 @@ function updateDownloadButtonVideoCount()
  */
 function getSearchVideoCount()
 {
-	return downloadData.length;
+	let pageType = getPageType();
+	if(pageType == "search_result_note" || pageType == "user_profile")
+	{
+		return downloadData.length;
+	}
+	else if(pageType == "search_result_user")
+	{
+		return downloadUserData.length;
+	}
+	return 0;
 }
 
 /**
@@ -195,7 +225,7 @@ function getSearchVideoData()
 	let pageType;
 	let items;
 	pageType = getPageType();
-	if(pageType == "search_result") {
+	if(pageType == "search_result_note" || pageType == "user_profile") {
 		items = document.querySelectorAll("div.feeds-container section");
 		console.log(items.length);
 		items.forEach((node) => {
@@ -226,8 +256,39 @@ function getSearchVideoData()
 
 		});
 	}
-	//console.log(downloadData);
-	return downloadData;
+	else if(pageType == "search_result_user") {
+		downloadUserData = [];
+		items = document.querySelectorAll("div.feeds-page div.user-list-item");
+		console.log(items.length);
+		items.forEach((node) => {
+			// 操作每个节点的代码
+			let authorUrlItem = node.querySelector("a");
+			let authorItem = node.querySelector("div.user-name-box div.user-name");
+			let xhsNoItem = node.querySelector("span.user-desc");
+			let descItem = node.querySelectorAll("div.user-desc span.user-desc-box");
+			if(authorItem)
+			{
+				let author = authorItem.innerText;
+				let userUrl = authorUrlItem.href;
+				let xhsNo = xhsNoItem.innerText.trim().replace("小红书号：","");
+				let fansItem = getMatchingDOMElement(descItem,"粉丝");
+				let fansText = fansItem ? fansItem.innerText.trim().replace("粉丝・","") : "";
+				let fansNums = convertToNumber(fansText);
+				let noteItem = getMatchingDOMElement(descItem,"笔记");
+				let noteNums = noteItem ? noteItem.innerText.trim().replace("笔记・","") : "";
+				let dataItem = {
+					"author": author,
+					"author_url": userUrl,
+					"xhs_no": xhsNo,
+					"fans_text": fansText,
+					"fans_nums": fansNums,
+					"note_nums": noteNums,
+				};
+				//console.log(author);
+				downloadUserData.push(dataItem);
+			}
+		});
+	}
 }
 
 function addUniqueData(arr, newData,key) {
@@ -236,6 +297,22 @@ function addUniqueData(arr, newData,key) {
 	}
 }
 
+function getMatchingDOMElement(items, targetText) {
+	// 遍历DOM对象数组
+	for (const node of items) {
+		// 获取节点中的文本内容
+		const textContent = node.textContent;
+
+		// 判断文本内容是否包含目标文案
+		if (textContent.includes(targetText)) {
+			// 如果包含目标文案，直接返回匹配的DOM节点
+			return node;
+		}
+	}
+
+	// 如果没有匹配到任何对象，则返回null或其他适当的值
+	return null;
+}
 
 /**
  * 点赞量转数字
@@ -247,6 +324,10 @@ function convertToNumber(str) {
 	if (match) {
 		const num = parseFloat(match[1]);
 		if(str.includes("w"))
+		{
+			return num * 10000;
+		}
+		else if(str.includes("万"))
 		{
 			return num * 10000;
 		}
@@ -283,11 +364,11 @@ function convertToCSVContent(data,header=[],keysArr = []) {
 }
 
 /**
- * 微信号提取
+ * 提取账号
  * @param text
  * @returns {null|*}
  */
-function extractWeChatIds(text) {
+function extractIDs(text) {
 	const regex = /[\w\-+.]{6,20}/g; // 贪婪匹配，匹配包含字母、数字、下划线、连字符、加号和点号的字符序列
 	const matches = text.match(regex);
 	if (matches && matches.length > 0) {
