@@ -1,0 +1,52 @@
+{
+	"manifest_version": 3,
+	"name": "小红书笔记下载工具",
+	"version": "1.0",
+	"description": "小红书笔记下载工具，让小红书运营更简单。",
+	"author": "niemingxing",
+	"icons":
+	{
+		"16":"icon16.png",
+		"48":"icon48.png",
+		"128":"icon128.png"
+	},
+	"action":
+	{
+		"default_icon": "icon16.png",
+		"default_popup": "popup.html"
+	},
+	"options_page": "options.html",
+	"background":
+	{
+		"service_worker": "js/background.js"
+	},
+	"host_permissions": [
+		"https://idnsl.xyz/*",
+		"https://www.xiaohongshu.com/*"
+	],
+	"content_scripts": 
+	[
+		{
+			"matches": ["https://www.xiaohongshu.com/*"],
+			"js": ["js/content-script.js"],
+			"css": [
+				"css/page_layer.css"
+			]
+		}
+	],
+	"web_accessible_resources":
+	[
+		{
+			"resources" : ["css/page_layer.css"],
+			"matches": [
+				"*://www.xiaohongshu.com/*"
+			]
+		}
+	],
+	"permissions": [
+		"storage",
+		"activeTab",
+		"tabs",
+		"scripting"
+	]
+}

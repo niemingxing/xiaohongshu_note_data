@@ -1,0 +1,251 @@
+.gpt-sr-container {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100%;
+    display: flex;
+    align-items:center;
+    z-index: 9999;
+}
+.gpt-sr-sidebar {
+    position: relative;
+    width: 35px;
+    background-color: #f2f2f2;
+    text-align: center;
+}
+#gpt-sr-toggleButton {
+    position: absolute;
+    top: 150px;
+    right: 0;
+    transform: translateY(-50%);
+    padding: 10px 10px;
+    background-color: #f81937;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+}
+
+.gpt-sr-sidebar button:disabled {
+    background-color: #ccc !important;
+    color: #888 !important;
+    cursor: not-allowed !important;
+}
+
+.gpt-sr-popup {
+    position: fixed;
+    top: 0;
+    left: 100%;
+    width: 0;
+    height: 100%;
+    overflow-y: auto;
+    background-color: #f9f9f9;
+    transition: left 0.3s ease-in-out;
+    z-index: 999;
+}
+.gpt-sr-popup.gpt-sr-active {
+    left: calc(100% - 400px);
+    width: 400px;
+}
+.gpt-sr-content {
+    padding: 5px 20px 20px 20px;
+}
+.gpt-sr-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #333;
+    font-size: 18px;
+}
+.gpt-sr-list {
+    list-style: none;
+    padding: 0;
+    max-height: 100%;
+    overflow-y: auto;
+}
+.gpt-sr-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-size: 14px;
+}
+.gpt-sr-list-item:last-child {
+    margin-bottom: 0;
+}
+.gpt-sr-keyword {
+    width: 200px;
+    white-space: nowrap; /* 不换行 */
+    overflow: hidden; /* 溢出部分隐藏 */
+    text-overflow: ellipsis; /* 使用省略号替代溢出部分 */
+}
+
+.gpt-sr-keyword a{
+    color: blue;
+}
+
+.gpt-sr-status {
+    text-transform: uppercase;
+    font-weight: bold;
+    color: #888;
+}
+.gpt-sr-actions {
+    display: flex;
+    gap: 5px;
+}
+.gpt-sr-actions button {
+    padding: 2px 8px;
+    background-color: #f81937;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    border-radius: 2px;
+}
+.gpt-sr-popup button:disabled {
+    background-color: #ccc;
+    color: #888;
+    cursor: not-allowed;
+}
+.gpt-sr-close-btn {
+    position: absolute;
+    top: 0px;
+    right: 10px;
+    padding: 5px;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 20px;
+    color: #888;
+}
+
+.gpt-sr-starting-btn {
+    position: absolute;
+    top: 10px;
+    right: 40px;
+    font-size: 14px;
+    padding: 2px 8px;
+    background-color: #f81937;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    border-radius: 2px;
+}
+
+.unresolved {
+    color: #F24C3D;
+}
+
+.generating {
+    color: #eec80c;
+}
+
+.generated {
+    color: #f26b22;
+}
+
+.published {
+    color: #007bff;
+}
+
+.queuing{
+    color: #25b9c7;
+}
+
+.collect_completed{
+    color: #9414de;
+}
+
+.custom-popup {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+}
+
+.custom-popup-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 1001;
+}
+
+.custom-popup-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #FFF;
+    color: #000;
+    text-align: center;
+    border-radius: 6px;
+    padding: 15px 15px 15px 15px;
+    z-index: 1002;
+}
+
+.custom-popup-question {
+    display: inline-block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.custom-popup-close-btn {
+    display: inline-block;
+    padding: 5px 0;
+    background-color: #FFF;
+    color: #007bff;
+    border: none;
+    cursor: pointer;
+    margin-top: 5px;
+    border-top: 1px solid #F2F2F2;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.custom-popup-close-btn:last-child {
+    margin-right: 0;
+}
+
+.custom-loading-progress-bar {
+    width: 100%;
+    height: 10px;
+    background-color: #f1f1f1;
+    position: absolute;
+    overflow: hidden;
+    border-radius: 5px;
+    top: 2px;
+    z-index: 1002;
+}
+
+.custom-loading-progress-bar .custom-progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background-color: #007bff;
+    animation: loadingAnimation 2s linear infinite;
+}
+
+@keyframes loadingAnimation {
+    0% {
+        left: -100%;
+        width: 100%;
+    }
+    50% {
+        left: 100%;
+        width: 0;
+    }
+    100% {
+        left: 100%;
+        width: 0;
+    }
+}
