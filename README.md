@@ -6,7 +6,11 @@
 
 主要功能：
 
-1.采集小红书笔记数据
+1.采集小红书搜索页笔记数据
+
+2.采集小红书搜索页用户数据
+
+3.采集小红书博主页笔记数据
 
 部分功能图片展示：
 
@@ -14,9 +18,16 @@
 
 <img width="1273" alt="image" src="https://github.com/niemingxing/xiaohongshu_note_data/assets/7400829/eaeb4f52-816e-49d4-afcd-0860cd7cc436">
 
+<img width="1274" alt="image" src="https://github.com/niemingxing/xiaohongshu_note_data/assets/7400829/8a08a553-4407-4e8a-afb7-daa34eeebde0">
+
+<img width="1277" alt="image" src="https://github.com/niemingxing/xiaohongshu_note_data/assets/7400829/64d3ab5e-75a3-47e9-a6b0-bc8b9e5ec4bf">
+
 数据格式：
 
 <img width="880" alt="image" src="https://github.com/niemingxing/xiaohongshu_note_data/assets/7400829/27ae3c66-e27e-4b10-b9b4-eda635da68dc">
+
+<img width="594" alt="image" src="https://github.com/niemingxing/xiaohongshu_note_data/assets/7400829/9f5b186d-4099-4a0e-995e-6aab6d424bad">
+
 
 
 
