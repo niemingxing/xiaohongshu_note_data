@@ -25,7 +25,7 @@ function checkMKey(callback)
         if(callback) callback({"code":"1002",'message':"没有配置密钥,请点击插件右上角设置！"});
         return;
     }
-    fetch('https://idnsl.xyz/code/check_mkey',{
+    fetch('https://api.kaipm.com/code/check_mkey',{
         method: 'POST',
         headers: {
             'Accept': 'application/json, */*',

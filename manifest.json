@@ -21,7 +21,7 @@
 		"service_worker": "js/background.js"
 	},
 	"host_permissions": [
-		"https://idnsl.xyz/*",
+		"https://api.kaipm.com/*",
 		"https://www.xiaohongshu.com/*"
 	],
 	"content_scripts": 
