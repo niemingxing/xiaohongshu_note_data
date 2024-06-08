@@ -232,16 +232,16 @@ function getSearchVideoData()
 			// 操作每个节点的代码
 			let authorItem = node.querySelector("a.author");
 			let titleItem = node.querySelector("a.title");
+			let linkItem = node.querySelector("a.cover");
 			let likeItem = node.querySelector("span.like-wrapper span.count");
 			if(authorItem)
 			{
 				let author = authorItem.innerText;
 				let userUrl = authorItem.href;
-				let title = titleItem.innerText;
-				let url = titleItem.href;
+				let title = titleItem ? titleItem.innerText : "";
+				let url = linkItem.href;
 				let likeText = likeItem.innerText;
 				let likeNums = convertToNumber(likeText);
-
 				let dataItem = {
 					"author": author,
 					"author_url": userUrl,
