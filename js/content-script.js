@@ -2,6 +2,7 @@
 let currentUrl = window.location.href;
 let downloadData = [];
 let downloadUserData = [];
+let downloadNums = 0;
 /**
  * 保存内容为csv文件
  * @param csvContent
@@ -56,10 +57,15 @@ function activiteDownloadButton()
 function initOtherActon()
 {
 	let pageType = getPageType();
-	setInterval(function (){
+	getSearchVideoData().then(() => {
 		updateDownloadButtonVideoCount();
-		getSearchVideoData();
-	},1500);
+		if(downloadNums > 0 && downloadData.length < downloadNums){
+			// 屏幕下滑一段距离
+			window.scrollBy(0, 200);
+			// 再次调用自身
+			setTimeout(initOtherActon, 1500);
+		}
+    });
 }
 
 /**
@@ -139,8 +145,8 @@ function startDataDownload()
 	if(pageType == "search_result_note" || pageType == "user_profile")
 	{
 		listData = downloadData;
-		header = ["博主名","博主地址","笔记标题","笔记地址","点赞","点赞数"];
-		keys = ["author","author_url","title","url","like_text","like_nums"];
+		header = ["博主名","博主地址","笔记标题","笔记内容","笔记地址","点赞","点赞数","收藏","收藏数","评论","评论数"];
+		keys = ["author","author_url","title","desc","url","like_text","like_nums","collect_text","collect_nums","chat_text","chat_nums"];
 	}
 	else if(pageType == "search_result_user")
 	{
@@ -220,7 +226,7 @@ function getSearchVideoCount()
  * 获取搜索页视频数据
  * @returns {*[]}
  */
-function getSearchVideoData()
+async function getSearchVideoData()
 {
 	let pageType;
 	let items;
@@ -228,7 +234,8 @@ function getSearchVideoData()
 	if(pageType == "search_result_note" || pageType == "user_profile") {
 		items = document.querySelectorAll("div.feeds-container section");
 		console.log(items.length);
-		items.forEach((node) => {
+		for (let i = 0; i < items.length; i++) {
+			let node = items[i];
 			// 操作每个节点的代码
 			let authorItem = node.querySelector("a.author");
 			let titleItem = node.querySelector("a.title");
@@ -241,20 +248,44 @@ function getSearchVideoData()
 				let title = titleItem ? titleItem.innerText : "";
 				let url = linkItem.href;
 				let likeText = likeItem.innerText;
+				likeText = likeText.trim() == "赞" ? "0" : likeText;
 				let likeNums = convertToNumber(likeText);
+
+				if(downloadData.some(item => item["url"] === url)) continue;
+
+				if(downloadNums > 0 && downloadData.length >= downloadNums) break;
+
+				node.querySelector("a.cover").click();
+				await new Promise(resolve => setTimeout(resolve, 500));
+
+				let noteContainer = document.querySelector("div#noteContainer");
+				let desc = noteContainer.querySelector("div#detail-desc").innerText;
+				let collectText = noteContainer.querySelector("span#note-page-collect-board-guide").innerText;
+				collectText = collectText.trim() == "收藏" ? "0" : collectText;
+				let collectNums = convertToNumber(collectText);
+				let chatText = noteContainer.querySelector("span.chat-wrapper").innerText;
+				chatText = chatText.trim() == "评论" ? "0" : chatText;
+				let chatNums = convertToNumber(chatText);
+				document.querySelector("div.close-circle").click();
+
+				await new Promise(resolve => setTimeout(resolve, 500));
 				let dataItem = {
 					"author": author,
 					"author_url": userUrl,
 					"title": title,
+					"desc": desc,
 					"url": url,
 					"like_text": likeText,
 					"like_nums": likeNums,
+					"collect_text":collectText,
+					"collect_nums": collectNums,
+					"chat_text": chatText,
+					"chat_nums": chatNums
 				};
 				console.log(title);
 				addUniqueData(downloadData,dataItem,'url');
 			}
-
-		});
+		}
 	}
 	else if(pageType == "search_result_user") {
 		downloadUserData = [];
@@ -377,7 +408,16 @@ function extractIDs(text) {
 	return null; // 未找到微信号
 }
 
-
+function initSetting(callback)
+{
+    // 获取存储的值
+    chrome.storage.local.get('nmx_xhs_setting', function (data) {
+        downloadNums = (data.hasOwnProperty("nmx_xhs_setting") && data.nmx_xhs_setting.hasOwnProperty("download_nums")) ? data.nmx_xhs_setting.download_nums : 0;
+        // 在这里使用存储的值
+        console.log(downloadNums);
+        if(callback) callback();
+    });
+}
 
 // 在页面加载完成后插入弹层和引入CSS文件
 window.onload = function() {
@@ -385,7 +425,7 @@ window.onload = function() {
 	{
 		initPromptMessagePopup();
 		initDownloadButton();
-		initOtherActon();
+		initSetting();
 		addStylesheet("css/page_layer.css");
 	}
 };
@@ -406,5 +446,9 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
 		{
 			startDownload();
 		}
+	}
+	else if(message.type == 'goto_start')
+	{
+		initOtherActon();
 	}
 });

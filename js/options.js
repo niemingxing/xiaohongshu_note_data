@@ -1,6 +1,7 @@
 // options.js
 document.addEventListener('DOMContentLoaded', function() {
     var mKeyInput = document.getElementById('mKey');
+    var downLoadNumsInput= document.getElementById('downLoadNums');
     var saveButton = document.getElementById('saveButton');
 
     // 获取保存的密钥值并设置输入框的默认值
@@ -8,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let setting = result.nmx_xhs_setting;
         if (setting) {
             mKeyInput.value = setting.mkey;
+            downLoadNumsInput.value = setting.download_nums;
             console.log(setting);
         }
     });
@@ -15,7 +17,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // 保存按钮点击事件处理程序
     saveButton.addEventListener('click', function() {
         let setting = {
-            'mkey':  mKeyInput.value
+            'mkey':  mKeyInput.value,
+            'download_nums' : downLoadNumsInput.value
         };
         chrome.storage.local.set({ 'nmx_xhs_setting': setting }, function() {
             alert('设置已保存');
