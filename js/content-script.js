@@ -260,12 +260,22 @@ async function getSearchVideoData()
 
 				let noteContainer = document.querySelector("div#noteContainer");
 				let desc = noteContainer.querySelector("div#detail-desc").innerText;
-				let collectText = noteContainer.querySelector("span#note-page-collect-board-guide").innerText;
-				collectText = collectText.trim() == "收藏" ? "0" : collectText;
+				let colletcElement = noteContainer.querySelector("span#note-page-collect-board-guide");
+				let collectText = "0";
+				if(colletcElement) {
+					collectText = colletcElement.innerText;
+					collectText = collectText.trim() == "收藏" ? "0" : collectText;
+				}
 				let collectNums = convertToNumber(collectText);
-				let chatText = noteContainer.querySelector("span.chat-wrapper").innerText;
-				chatText = chatText.trim() == "评论" ? "0" : chatText;
+
+				let chatElement = noteContainer.querySelector("span.chat-wrapper");
+				let chatText = "0";
+				if(chatElement) {
+					chatText = chatElement.innerText;
+					chatText = chatText.trim() == "评论" ? "0" : chatText;
+				}
 				let chatNums = convertToNumber(chatText);
+				
 				document.querySelector("div.close-circle").click();
 
 				await new Promise(resolve => setTimeout(resolve, 500));
