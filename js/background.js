@@ -10,8 +10,25 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
                     });
                 });
             });
+            sendResponse({ farewell: "Background runtime onMessage!" });
         }
-        sendResponse({ farewell: "Background runtime onMessage!" });
+        else if (request.action === "proxyRequest") {
+            (async () => {
+                try {
+                  const response = await fetch(request.url, {
+                    method: request.method,
+                    headers: request.headers,
+                    body: request.body,
+                    credentials: 'include'  // 确保携带 Cookie
+                  });
+                  const data = await response.text();
+                  sendResponse({status: 'success', data: data});
+                } catch (error) {
+                  sendResponse({status: 'error', message: error.message});
+                }
+              })();
+              return true; // 表示将发送异步响应
+        }
     }
 );
 

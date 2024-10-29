@@ -3,6 +3,12 @@ let currentUrl = window.location.href;
 let downloadData = [];
 let downloadUserData = [];
 let downloadNums = 0;
+let tenantAccessToken = "";
+let feishuAppId = "";
+let feishuAppSecret = "";
+let feishuAppToken = "";
+let feishuTableId = "";
+let batchFeishuData = [];
 /**
  * 保存内容为csv文件
  * @param csvContent
@@ -54,9 +60,85 @@ function activiteDownloadButton()
 	document.querySelector("#xhs-sr-toggleButton").disabled = false;
 }
 
+async function proxyAjaxRequest(url, method = 'GET', headers = {}, body = null, callBack = null) {
+	const response = await new Promise((resolve) => {
+		chrome.runtime.sendMessage({
+			action: 'proxyRequest',
+			url: url,
+			method: method,
+			headers: headers,
+			body: body
+		}, (response) => {
+			resolve(response);
+		});
+	});
+
+	if(callBack != null) await callBack(response);
+}
+
+async function getFeishuToken() {
+	if(!feishuAppId) return;
+	await proxyAjaxRequest("https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal", 'POST', {"Content-Type":"application/json; charset=utf-8"}, JSON.stringify({"app_id":feishuAppId,"app_secret":feishuAppSecret}), function(response) {
+		if (response.status === 'success') {
+			let jsonData = JSON.parse(response.data);
+			if(jsonData.code == 0) {
+				tenantAccessToken = jsonData.tenant_access_token;
+			} else {
+				console.log('Error:', jsonData);
+			}
+		} else {
+			console.log('Error:', response.message);
+		}
+	});
+}
+
+async function sendFeishuData() {
+	if(!tenantAccessToken) return;
+	let records = [];
+	for(let i = 0; i < 100; i++)
+	{
+		if(batchFeishuData.length <= 0) break;
+		let item = batchFeishuData.shift();
+		let aItem = {"fields": {
+			"博主名": item.author,
+			"博主地址": item.author_url,
+			"笔记标题": item.title,
+			"笔记内容": item.desc,
+			"笔记地址": item.url,
+			"点赞": item.like_text,
+			"点赞数": item.like_nums,
+			"收藏": item.collect_text,
+			"收藏数": item.collect_nums,
+			"评论": item.chat_text,
+			"评论数": item.chat_nums,
+		}};
+		records.push(aItem);
+	}
+	if(records.length <= 0) return;
+	await proxyAjaxRequest("https://open.feishu.cn/open-apis/bitable/v1/apps/" + feishuAppToken + "/tables/" + feishuTableId + "/records/batch_create", 'POST', {"Authorization":"Bearer " + tenantAccessToken,"Content-Type":"application/json; charset=utf-8"}, JSON.stringify({"records":records}),async function(response) {
+		if (response.status === 'success') {
+			//response.data 转json
+			let jsonData = JSON.parse(response.data);
+			if(jsonData.code == 0) {
+				console.log('同步飞书成功');
+			} else {
+				console.log('Error:', jsonData);
+			}
+		} else {
+			console.log('Error:', response.message);
+		}
+	});
+}
+
 function initOtherActon()
 {
 	let pageType = getPageType();
+
+	getFeishuToken();
+	setInterval(function() {
+		sendFeishuData();
+	},5000);
+
 	getSearchVideoData().then(() => {
 		updateDownloadButtonVideoCount();
 		if(downloadNums > 0 && downloadData.length < downloadNums){
@@ -256,7 +338,7 @@ async function getSearchVideoData()
 				if(downloadNums > 0 && downloadData.length >= downloadNums) break;
 
 				node.querySelector("a.cover").click();
-				await new Promise(resolve => setTimeout(resolve, 500));
+				await new Promise(resolve => setTimeout(resolve, 1000));
 
 				let noteContainer = document.querySelector("div#noteContainer");
 				let desc = noteContainer.querySelector("div#detail-desc").innerText;
@@ -278,7 +360,7 @@ async function getSearchVideoData()
 				
 				document.querySelector("div.close-circle").click();
 
-				await new Promise(resolve => setTimeout(resolve, 500));
+				await new Promise(resolve => setTimeout(resolve, 1000));
 				let dataItem = {
 					"author": author,
 					"author_url": userUrl,
@@ -286,14 +368,15 @@ async function getSearchVideoData()
 					"desc": desc,
 					"url": url,
 					"like_text": likeText,
-					"like_nums": likeNums,
+					"like_nums": `${likeNums}`,
 					"collect_text":collectText,
-					"collect_nums": collectNums,
+					"collect_nums": `${collectNums}`,
 					"chat_text": chatText,
-					"chat_nums": chatNums
+					"chat_nums": `${chatNums}`
 				};
 				console.log(title);
 				addUniqueData(downloadData,dataItem,'url');
+				addUniqueData(batchFeishuData,dataItem,'url');
 			}
 		}
 	}
@@ -422,8 +505,15 @@ function initSetting(callback)
 {
     // 获取存储的值
     chrome.storage.local.get('nmx_xhs_setting', function (data) {
-        downloadNums = (data.hasOwnProperty("nmx_xhs_setting") && data.nmx_xhs_setting.hasOwnProperty("download_nums")) ? data.nmx_xhs_setting.download_nums : 0;
-        // 在这里使用存储的值
+		function getSettingValue(key,defaultValue = '') {
+			return (data.hasOwnProperty("nmx_xhs_setting") && data.nmx_xhs_setting.hasOwnProperty(key)) ? data.nmx_xhs_setting[key] : defaultValue;
+		}
+        downloadNums = getSettingValue("download_nums",0);
+        feishuAppId = getSettingValue("app_id","");
+		feishuAppSecret = getSettingValue("app_secret","");
+		feishuAppToken = getSettingValue("app_token","");
+		feishuTableId = getSettingValue("table_id","");
+		// 在这里使用存储的值
         console.log(downloadNums);
         if(callback) callback();
     });

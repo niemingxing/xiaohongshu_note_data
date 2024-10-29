@@ -22,6 +22,7 @@
 	},
 	"host_permissions": [
 		"https://api.kaipm.com/*",
+		"https://open.feishu.cn/*",
 		"https://www.xiaohongshu.com/*"
 	],
 	"content_scripts": 

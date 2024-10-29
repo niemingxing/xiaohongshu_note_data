@@ -12,6 +12,11 @@
     margin-bottom: 20px;
 }
 
+.sub_title {
+    text-align: left;
+    width: 100%;
+}
+
 .form {
     display: flex;
     flex-direction: column;
