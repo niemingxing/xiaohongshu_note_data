@@ -340,25 +340,30 @@ async function getSearchVideoData()
 
 				node.querySelector("a.cover").click();
 				await new Promise(resolve => setTimeout(resolve, timeInterval * 1000));
-
-				let noteContainer = document.querySelector("div#noteContainer");
-				let descElement = noteContainer.querySelector("div#detail-desc");
-				let desc = descElement ? descElement.innerText : "";
-				let colletcElement = noteContainer.querySelector("span#note-page-collect-board-guide");
-				let collectText = "0";
-				if(colletcElement) {
-					collectText = colletcElement.innerText;
-					collectText = collectText.trim() == "收藏" ? "0" : collectText;
-				}
-				let collectNums = convertToNumber(collectText);
-
-				let chatElement = noteContainer.querySelector("span.chat-wrapper");
 				let chatText = "0";
-				if(chatElement) {
-					chatText = chatElement.innerText;
-					chatText = chatText.trim() == "评论" ? "0" : chatText;
+				let chatNums = 0;
+				let collectText = "0";
+				let collectNums = 0;
+				let desc = "";
+				let noteContainer = document.querySelector("div#noteContainer");
+				if(noteContainer) {
+					let descElement = noteContainer.querySelector("div#detail-desc");
+					desc = descElement ? descElement.innerText : "";
+					//获取收藏数
+					let colletcElement = noteContainer.querySelector("span#note-page-collect-board-guide");
+					if(colletcElement) {
+						collectText = colletcElement.innerText;
+						collectText = collectText.trim() == "收藏" ? "0" : collectText;
+					}
+					collectNums = convertToNumber(collectText);
+					//获取评论数
+					let chatElement = noteContainer.querySelector("span.chat-wrapper");
+					if(chatElement) {
+						chatText = chatElement.innerText;
+						chatText = chatText.trim() == "评论" ? "0" : chatText;
+					}
+					chatNums = convertToNumber(chatText);
 				}
-				let chatNums = convertToNumber(chatText);
 				
 				document.querySelector("div.close-circle").click();
 
