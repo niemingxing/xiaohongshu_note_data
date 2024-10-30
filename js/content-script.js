@@ -9,6 +9,7 @@ let feishuAppSecret = "";
 let feishuAppToken = "";
 let feishuTableId = "";
 let batchFeishuData = [];
+let timeInterval = 0;
 /**
  * 保存内容为csv文件
  * @param csvContent
@@ -338,10 +339,11 @@ async function getSearchVideoData()
 				if(downloadNums > 0 && downloadData.length >= downloadNums) break;
 
 				node.querySelector("a.cover").click();
-				await new Promise(resolve => setTimeout(resolve, 1000));
+				await new Promise(resolve => setTimeout(resolve, timeInterval * 1000));
 
 				let noteContainer = document.querySelector("div#noteContainer");
-				let desc = noteContainer.querySelector("div#detail-desc").innerText;
+				let descElement = noteContainer.querySelector("div#detail-desc");
+				let desc = descElement ? descElement.innerText : "";
 				let colletcElement = noteContainer.querySelector("span#note-page-collect-board-guide");
 				let collectText = "0";
 				if(colletcElement) {
@@ -508,7 +510,8 @@ function initSetting(callback)
 		function getSettingValue(key,defaultValue = '') {
 			return (data.hasOwnProperty("nmx_xhs_setting") && data.nmx_xhs_setting.hasOwnProperty(key)) ? data.nmx_xhs_setting[key] : defaultValue;
 		}
-        downloadNums = getSettingValue("download_nums",0);
+        downloadNums = parseInt(getSettingValue("download_nums",30));
+		timeInterval = parseInt(getSettingValue("time_interval",1));
         feishuAppId = getSettingValue("app_id","");
 		feishuAppSecret = getSettingValue("app_secret","");
 		feishuAppToken = getSettingValue("app_token","");

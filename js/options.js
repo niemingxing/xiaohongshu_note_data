@@ -2,6 +2,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     var mKeyInput = document.getElementById('mKey');
     var downLoadNumsInput= document.getElementById('downLoadNums');
+    var timeIntervalInput = document.getElementById('timeInterval');
     var appIdInput = document.getElementById('appId');
     var appSecretInput= document.getElementById('appSecret');
     var appTokenInput= document.getElementById('appToken');
@@ -13,7 +14,8 @@ document.addEventListener('DOMContentLoaded', function() {
         let setting = result.nmx_xhs_setting;
         if (setting) {
             mKeyInput.value = setting.mkey;
-            downLoadNumsInput.value = setting.download_nums;
+            downLoadNumsInput.value = setting.download_nums ?? 30;
+            timeIntervalInput.value = setting.time_interval ?? 1;
             appIdInput.value = setting.app_id ?? '';
             appSecretInput.value = setting.app_secret ?? '';
             appTokenInput.value = setting.app_token ?? '';
@@ -30,7 +32,8 @@ document.addEventListener('DOMContentLoaded', function() {
             'app_id': appIdInput.value,
             'app_secret': appSecretInput.value,
             'app_token': appTokenInput.value,
-            'table_id': tableIdInput.value
+            'table_id': tableIdInput.value,
+            'time_interval': timeIntervalInput.value
         };
         chrome.storage.local.set({ 'nmx_xhs_setting': setting }, function() {
             alert('设置已保存');
