@@ -67,8 +67,8 @@ function initTableInfo() {
 	let pageType = getPageType();
 	if(pageType == "search_result_note" || pageType == "user_profile")
 	{
-		tableHeader = ["博主名","博主地址","笔记标题","笔记内容","笔记地址","点赞","点赞数","收藏","收藏数","评论","评论数","日期","发布时间"];
-		tableKeys = ["author","author_url","title","desc","url","like_text","like_nums","collect_text","collect_nums","chat_text","chat_nums","date","datetime"];
+		tableHeader = ["博主名","博主地址","笔记标题","笔记内容","标签","笔记地址","点赞","点赞数","收藏","收藏数","评论","评论数","日期","发布时间"];
+		tableKeys = ["author","author_url","title","desc","tags","url","like_text","like_nums","collect_text","collect_nums","chat_text","chat_nums","date","datetime"];
 	}
 	else if(pageType == "search_result_user")
 	{
@@ -379,12 +379,24 @@ async function getSearchVideoData()
 				let collectText = "0";
 				let collectNums = 0;
 				let desc = "";
+				let tags = "";
 				let date = "";
 				let datetime = "";
 				let noteContainer = document.querySelector("div#noteContainer");
 				if(noteContainer) {
 					let descElement = noteContainer.querySelector("div#detail-desc");
-					desc = descElement ? descElement.innerText : "";
+					if(descElement) {
+						desc = descElement.innerText;
+						//获取 a.class=tag 的元素内容，空格分割
+						let tagsArr = [];
+						let tagElements = noteContainer.querySelectorAll("a.tag");
+						tagElements.forEach((tagElement) => {
+							tagsArr.push(tagElement.innerText);
+						});
+						tags = tagsArr.join(" ");
+					}
+					
+
 					//获取收藏数
 					let colletcElement = noteContainer.querySelector("span#note-page-collect-board-guide");
 					if(colletcElement) {
@@ -406,7 +418,6 @@ async function getSearchVideoData()
 						date = dateElement.innerText;
 						datetime = parseDate(date);
 					}
-					console.log(date,datetime);
 				}
 				
 				document.querySelector("div.close-circle").click();
@@ -417,6 +428,7 @@ async function getSearchVideoData()
 					"author_url": userUrl,
 					"title": title,
 					"desc": desc,
+					"tags": tags,
 					"url": url,
 					"like_text": likeText,
 					"like_nums": `${likeNums}`,
