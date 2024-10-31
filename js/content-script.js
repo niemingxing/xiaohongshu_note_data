@@ -170,11 +170,15 @@ async function createFeishuTable() {
 	});
 }
 
-async function initOtherActon()
-{
+async function goStart() {
 	initTableInfo();
 	await getFeishuToken();
 	await createFeishuTable();
+	initOtherActon();
+}
+
+function initOtherActon()
+{
 	setInterval(function() {
 		sendFeishuData();
 	},5000);
@@ -685,6 +689,6 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
 	}
 	else if(message.type == 'goto_start')
 	{
-		initOtherActon();
+		goStart();
 	}
 });
