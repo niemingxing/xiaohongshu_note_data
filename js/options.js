@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', function() {
     var appIdInput = document.getElementById('appId');
     var appSecretInput= document.getElementById('appSecret');
     var appTokenInput= document.getElementById('appToken');
-    var tableIdInput = document.getElementById('tableId');
     var saveButton = document.getElementById('saveButton');
 
     // 获取保存的密钥值并设置输入框的默认值
@@ -19,7 +18,6 @@ document.addEventListener('DOMContentLoaded', function() {
             appIdInput.value = setting.app_id ?? '';
             appSecretInput.value = setting.app_secret ?? '';
             appTokenInput.value = setting.app_token ?? '';
-            tableIdInput.value = setting.table_id ?? '';
             console.log(setting);
         }
     });
@@ -32,7 +30,6 @@ document.addEventListener('DOMContentLoaded', function() {
             'app_id': appIdInput.value,
             'app_secret': appSecretInput.value,
             'app_token': appTokenInput.value,
-            'table_id': tableIdInput.value,
             'time_interval': timeIntervalInput.value
         };
         chrome.storage.local.set({ 'nmx_xhs_setting': setting }, function() {

@@ -10,6 +10,8 @@ let feishuAppToken = "";
 let feishuTableId = "";
 let batchFeishuData = [];
 let timeInterval = 0;
+let tableHeader = [];
+let tableKeys = [];
 /**
  * 保存内容为csv文件
  * @param csvContent
@@ -61,6 +63,20 @@ function activiteDownloadButton()
 	document.querySelector("#xhs-sr-toggleButton").disabled = false;
 }
 
+function initTableInfo() {
+	let pageType = getPageType();
+	if(pageType == "search_result_note" || pageType == "user_profile")
+	{
+		tableHeader = ["博主名","博主地址","笔记标题","笔记内容","笔记地址","点赞","点赞数","收藏","收藏数","评论","评论数","日期","发布时间"];
+		tableKeys = ["author","author_url","title","desc","url","like_text","like_nums","collect_text","collect_nums","chat_text","chat_nums","date","datetime"];
+	}
+	else if(pageType == "search_result_user")
+	{
+		tableHeader = ["博主名","博主地址","小红书号","粉丝","粉丝数","笔记数"];
+		tableKeys = ["author","author_url","xhs_no","fans_text","fans_nums","note_nums"];
+	}
+}
+
 async function proxyAjaxRequest(url, method = 'GET', headers = {}, body = null, callBack = null) {
 	const response = await new Promise((resolve) => {
 		chrome.runtime.sendMessage({
@@ -84,6 +100,7 @@ async function getFeishuToken() {
 			let jsonData = JSON.parse(response.data);
 			if(jsonData.code == 0) {
 				tenantAccessToken = jsonData.tenant_access_token;
+				console.log('获取飞书token成功');
 			} else {
 				console.log('Error:', jsonData);
 			}
@@ -94,25 +111,20 @@ async function getFeishuToken() {
 }
 
 async function sendFeishuData() {
-	if(!tenantAccessToken) return;
+	if(!tenantAccessToken || !feishuTableId) return;
 	let records = [];
 	for(let i = 0; i < 100; i++)
 	{
 		if(batchFeishuData.length <= 0) break;
 		let item = batchFeishuData.shift();
-		let aItem = {"fields": {
-			"博主名": item.author,
-			"博主地址": item.author_url,
-			"笔记标题": item.title,
-			"笔记内容": item.desc,
-			"笔记地址": item.url,
-			"点赞": item.like_text,
-			"点赞数": item.like_nums,
-			"收藏": item.collect_text,
-			"收藏数": item.collect_nums,
-			"评论": item.chat_text,
-			"评论数": item.chat_nums,
-		}};
+		//根据 tableHeader tableKeys 生成对应的数据
+		let aItem = {fields:{}};
+		let fields = {};
+		for(let j = 0; j < tableHeader.length; j++) {
+			fields[tableHeader[j]] = `${item[tableKeys[j]]}`;
+		}
+		aItem.fields = fields;
+
 		records.push(aItem);
 	}
 	if(records.length <= 0) return;
@@ -121,7 +133,7 @@ async function sendFeishuData() {
 			//response.data 转json
 			let jsonData = JSON.parse(response.data);
 			if(jsonData.code == 0) {
-				console.log('同步飞书成功');
+				console.log('同步飞书数据成功');
 			} else {
 				console.log('Error:', jsonData);
 			}
@@ -131,18 +143,45 @@ async function sendFeishuData() {
 	});
 }
 
-function initOtherActon()
-{
-	let pageType = getPageType();
+async function createFeishuTable() {
+	if(!tenantAccessToken) return;
+	//根据 tableHeader tableKeys 生成对应的数据
+	let fields = [];
+	for(let i = 0; i < tableHeader.length; i++) {
+		let field = {"field_name":tableHeader[i],"type":1};
+		fields.push(field);
+	}
+	//随机起名字 小红书 + 年月日时分秒
+	let tableName = "小红书" + new Date().toLocaleString();
 
-	getFeishuToken();
+	await proxyAjaxRequest("https://open.feishu.cn/open-apis/bitable/v1/apps/" + feishuAppToken + "/tables", 'POST', {"Authorization":"Bearer " + tenantAccessToken,"Content-Type":"application/json; charset=utf-8"}, JSON.stringify({"table":{"name":tableName,"fields":fields}}),async function(response) {
+		if (response.status === 'success') {
+			//response.data 转json
+			let jsonData = JSON.parse(response.data);
+			if(jsonData.code == 0) {
+				feishuTableId = jsonData.data.table_id;
+				console.log('创建飞书表格成功');
+			} else {
+				console.log('Error:', jsonData);
+			}
+		} else {
+			console.log('Error:', response.message);
+		}
+	});
+}
+
+async function initOtherActon()
+{
+	initTableInfo();
+	await getFeishuToken();
+	await createFeishuTable();
 	setInterval(function() {
 		sendFeishuData();
 	},5000);
 
 	getSearchVideoData().then(() => {
-		updateDownloadButtonVideoCount();
-		if(downloadNums > 0 && downloadData.length < downloadNums){
+		let dataNums = updateDownloadButtonVideoCount();
+		if(downloadNums > 0 && dataNums < downloadNums){
 			// 屏幕下滑一段距离
 			window.scrollBy(0, 200);
 			// 再次调用自身
@@ -222,22 +261,16 @@ function startDownload()
 function startDataDownload()
 {
 	let listData = [];
-	let header = [];
-	let keys = []
 	let pageType = getPageType();
 	if(pageType == "search_result_note" || pageType == "user_profile")
 	{
 		listData = downloadData;
-		header = ["博主名","博主地址","笔记标题","笔记内容","笔记地址","点赞","点赞数","收藏","收藏数","评论","评论数"];
-		keys = ["author","author_url","title","desc","url","like_text","like_nums","collect_text","collect_nums","chat_text","chat_nums"];
 	}
 	else if(pageType == "search_result_user")
 	{
 		listData = downloadUserData;
-		header = ["博主名","博主地址","小红书号","粉丝","粉丝数","笔记数"];
-		keys = ["author","author_url","xhs_no","fans_text","fans_nums","note_nums"];
 	}
-	let csvContent = convertToCSVContent(listData,header,keys);
+	let csvContent = convertToCSVContent(listData,tableHeader,tableKeys);
 	downloadCsv(csvContent);
 }
 
@@ -285,6 +318,7 @@ function updateDownloadButtonVideoCount()
 	{
 		buttonElement.textContent = "用户数据下载(" + dataNums + ")";
 	}
+	return dataNums;
 }
 
 /**
@@ -345,6 +379,8 @@ async function getSearchVideoData()
 				let collectText = "0";
 				let collectNums = 0;
 				let desc = "";
+				let date = "";
+				let datetime = "";
 				let noteContainer = document.querySelector("div#noteContainer");
 				if(noteContainer) {
 					let descElement = noteContainer.querySelector("div#detail-desc");
@@ -363,6 +399,14 @@ async function getSearchVideoData()
 						chatText = chatText.trim() == "评论" ? "0" : chatText;
 					}
 					chatNums = convertToNumber(chatText);
+
+					//获取日期
+					let dateElement = noteContainer.querySelector("span.date");
+					if(dateElement) {
+						date = dateElement.innerText;
+						datetime = parseDate(date);
+					}
+					console.log(date,datetime);
 				}
 				
 				document.querySelector("div.close-circle").click();
@@ -379,7 +423,9 @@ async function getSearchVideoData()
 					"collect_text":collectText,
 					"collect_nums": `${collectNums}`,
 					"chat_text": chatText,
-					"chat_nums": `${chatNums}`
+					"chat_nums": `${chatNums}`,
+					"date": date,
+					"datetime": datetime,
 				};
 				console.log(title);
 				addUniqueData(downloadData,dataItem,'url');
@@ -392,6 +438,7 @@ async function getSearchVideoData()
 		items = document.querySelectorAll("div.feeds-page div.user-list-item");
 		console.log(items.length);
 		items.forEach((node) => {
+			if(downloadNums > 0 && downloadUserData.length >= downloadNums) return;
 			// 操作每个节点的代码
 			let authorUrlItem = node.querySelector("a");
 			let authorItem = node.querySelector("div.user-name-box div.user-name");
@@ -417,6 +464,7 @@ async function getSearchVideoData()
 				};
 				//console.log(author);
 				downloadUserData.push(dataItem);
+				batchFeishuData.push(dataItem);
 			}
 		});
 	}
@@ -482,6 +530,75 @@ function formatCSVValue(value) {
 	return value;
 }
 
+function parseDate(input) {
+    const today = new Date();
+
+    // 1. 判断是否包含 yyyy-mm-dd 格式
+    const fullDatePattern = /\b(\d{4}-\d{2}-\d{2})\b/;
+    const fullDateMatch = input.match(fullDatePattern);
+    if (fullDateMatch) {
+		const date = new Date(fullDateMatch[1]);
+		date.setHours(0, 0, 0);
+        return formatDateTime(date);
+    }
+
+    // 2. 判断是否包含 mm-dd 格式
+    const monthDayPattern = /\b(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])\b/;
+    const monthDayMatch = input.match(monthDayPattern);
+    if (monthDayMatch) {
+        const [month, day] = monthDayMatch[0].split('-').map(Number);
+        const date = new Date(today.getFullYear(), month - 1, day);
+		date.setHours(0, 0, 0);
+        return formatDateTime(date);
+    }
+
+    // 3. 判断是否包含 N 天前
+    const daysAgoPattern = /(\d+) 天前/;
+    const daysMatch = input.match(daysAgoPattern);
+    if (daysMatch) {
+        const daysAgo = parseInt(daysMatch[1], 10);
+        const pastDate = new Date(today);
+        pastDate.setDate(today.getDate() - daysAgo);
+		pastDate.setHours(0, 0, 0);
+        return formatDateTime(pastDate);
+    }
+
+    // 4. 判断是否包含昨天+时分
+    const yesterdayPattern = /昨天 (\d{2}:\d{2})/;
+    const yesterdayMatch = input.match(yesterdayPattern);
+    if (yesterdayMatch) {
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        const [hours, minutes] = yesterdayMatch[1].split(':');
+        yesterday.setHours(Number(hours), Number(minutes), 0);
+        return formatDateTime(yesterday);
+    }
+
+    // 5. 判断是否包含今天+时分
+    const todayPattern = /今天 (\d{2}:\d{2})/;
+    const todayMatch = input.match(todayPattern);
+    if (todayMatch) {
+        const todayWithTime = new Date(today);
+        const [hours, minutes] = todayMatch[1].split(':');
+        todayWithTime.setHours(Number(hours), Number(minutes), 0);
+        return formatDateTime(todayWithTime);
+    }
+
+    // 如果没有匹配到，返回 null
+    return null;
+}
+
+function formatDateTime(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
 /**
  * 把数组转换成csv内容
  * @param data
@@ -520,7 +637,6 @@ function initSetting(callback)
         feishuAppId = getSettingValue("app_id","");
 		feishuAppSecret = getSettingValue("app_secret","");
 		feishuAppToken = getSettingValue("app_token","");
-		feishuTableId = getSettingValue("table_id","");
 		// 在这里使用存储的值
         console.log(downloadNums);
         if(callback) callback();
