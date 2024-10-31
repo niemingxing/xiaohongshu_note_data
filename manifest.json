@@ -1,7 +1,7 @@
 {
 	"manifest_version": 3,
 	"name": "小红书笔记下载工具",
-	"version": "1.0",
+	"version": "1.1",
 	"description": "小红书笔记下载工具，让小红书运营更简单。",
 	"author": "niemingxing",
 	"icons":
