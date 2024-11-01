@@ -34,7 +34,7 @@
 
 飞书接入流程：
 
-1.创建企业自建应用
+1.创建企业自建应用(https://open.feishu.cn/)
 
 ![image](https://github.com/user-attachments/assets/d6fad0ba-0a66-4b28-88f4-f65bf1e239ea)
 
