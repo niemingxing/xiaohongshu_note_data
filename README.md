@@ -28,8 +28,27 @@
 
 <img width="594" alt="image" src="https://github.com/niemingxing/xiaohongshu_note_data/assets/7400829/9f5b186d-4099-4a0e-995e-6aab6d424bad">
 
+多维表格:
 
+![image](https://github.com/user-attachments/assets/68d95b9d-71f1-49aa-9271-7a3ac50fbf9e)
 
+飞书接入流程：
+
+1.创建企业自建应用
+
+![image](https://github.com/user-attachments/assets/d6fad0ba-0a66-4b28-88f4-f65bf1e239ea)
+
+2.获取AppId和AppSecret
+
+![image](https://github.com/user-attachments/assets/54dd8bde-7ff5-470a-80f5-40aeedc90cf9)
+
+3.开通应用多维表格权限
+
+![image](https://github.com/user-attachments/assets/996ac480-19e4-4b11-9e2c-be9b7336850b)
+
+4.获取多维表格AppToken
+
+<img width="1246" alt="image" src="https://github.com/user-attachments/assets/5c2da334-8dc3-4c68-a139-1cc2717081fc">
 
 ### 沟通交流：
 
