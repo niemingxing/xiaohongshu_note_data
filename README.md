@@ -50,6 +50,11 @@
 
 <img width="1246" alt="image" src="https://github.com/user-attachments/assets/5c2da334-8dc3-4c68-a139-1cc2717081fc">
 
+5.给多维表格分配应用权限(搜索你的应用名，添加编辑权限)
+
+<img width="1497" alt="image" src="https://github.com/user-attachments/assets/5de07a0a-44c4-4f81-a789-a96b3c45063a">
+
+
 ### 沟通交流：
 
 ![vx:histargo](https://i.ibb.co/hMbTs1G/a3779b33-bfe2-4ff9-a592-f0ec090a3055-1-2.jpg)
