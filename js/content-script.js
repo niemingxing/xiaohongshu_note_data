@@ -53,7 +53,9 @@ function initDownloadButton() {
 	// 为单篇下载按钮添加事件监听
 	document.querySelector("#xhs-sr-singleButton").addEventListener("click", function() {
 		this.disabled = true;
-		getCurrentNodeData();
+		chrome.runtime.sendMessage({"type":"download_single_note"}, function (response) {
+			console.log(response.farewell)
+		});
 		this.disabled = false;
 	});
 	
@@ -74,7 +76,7 @@ function activiteDownloadButton()
 
 function initTableInfo() {
 	let pageType = getPageType();
-	if(pageType == "search_result_note" || pageType == "user_profile")
+	if(pageType == "search_result_note" || pageType == "user_profile" || pageType == "explore_result_note")
 	{
 		tableHeader = ["博主名","博主地址","笔记标题","笔记内容","标签","笔记地址","点赞","点赞数","收藏","收藏数","评论","评论数","日期","发布时间"];
 		tableKeys = ["author","author_url","title","desc","tags","url","like_text","like_nums","collect_text","collect_nums","chat_text","chat_nums","date","datetime"];
@@ -136,7 +138,7 @@ async function sendFeishuData() {
 
 		records.push(aItem);
 	}
-
+	
 	if(records.length <= 0) return;
 	await proxyAjaxRequest("https://open.feishu.cn/open-apis/bitable/v1/apps/" + feishuAppToken + "/tables/" + feishuTableId + "/records/batch_create", 'POST', {"Authorization":"Bearer " + tenantAccessToken,"Content-Type":"application/json; charset=utf-8"}, JSON.stringify({"records":records}),async function(response) {
 		if (response.status === 'success') {
@@ -198,8 +200,10 @@ async function addFeishuData(data) {
 				if(jsonData.data.total > 0) {
 					showPromptMessagePopup("已经同步飞书表格",2);
 				} else {
+					showPromptMessagePopup("同步飞书表格成功",2);
 					addUniqueData(downloadData,data,'url');
 					addUniqueData(batchFeishuData,data,'url');
+					updateDownloadButtonVideoCount();
 				}
 			} else {
 				console.log('Error:', jsonData);
@@ -224,6 +228,16 @@ async function goStart() {
 	await getFeishuToken();
 	await createFeishuTable();
 	initOtherActon();
+}
+
+async function goStartDownloadSingleNote() {
+	initTableInfo();
+	await getFeishuToken();
+	await createFeishuTable();
+	await getCurrentNodeData();
+	setInterval(function() {
+		sendFeishuData();
+	},5000);
 }
 
 function initOtherActon()
@@ -315,7 +329,7 @@ function startDataDownload()
 {
 	let listData = [];
 	let pageType = getPageType();
-	if(pageType == "search_result_note" || pageType == "user_profile")
+	if(pageType == "search_result_note" || pageType == "user_profile" || pageType == "explore_result_note")
 	{
 		listData = downloadData;
 	}
@@ -351,6 +365,10 @@ function getPageType()
 	{
 		pageType = "user_profile";
 	}
+	else if(currentUrl.includes("https://www.xiaohongshu.com/explore"))
+	{
+		pageType = "explore_result_note";
+	}
 	console.log(pageType);
 	return pageType;
 }
@@ -363,7 +381,7 @@ function updateDownloadButtonVideoCount()
 	let buttonElement = document.querySelector("#xhs-sr-toggleButton");
 	let dataNums = getSearchVideoCount();
 	let pageType = getPageType();
-	if(pageType == "search_result_note" || pageType == "user_profile")
+	if(pageType == "search_result_note" || pageType == "user_profile" || pageType == "explore_result_note")
 	{
 		buttonElement.textContent = "笔记数据下载(" + dataNums + ")";
 	}
@@ -381,7 +399,7 @@ function updateDownloadButtonVideoCount()
 function getSearchVideoCount()
 {
 	let pageType = getPageType();
-	if(pageType == "search_result_note" || pageType == "user_profile")
+	if(pageType == "search_result_note" || pageType == "user_profile" || pageType == "explore_result_note")
 	{
 		return downloadData.length;
 	}
@@ -401,7 +419,7 @@ async function getSearchVideoData()
 	let pageType;
 	let items;
 	pageType = getPageType();
-	if(pageType == "search_result_note" || pageType == "user_profile") {
+	if(pageType == "search_result_note" || pageType == "user_profile" || pageType == "explore_result_note") {
 		items = document.querySelectorAll("div.feeds-container section");
 		console.log(items.length);
 		for (let i = 0; i < items.length; i++) {
@@ -535,7 +553,7 @@ async function getSearchVideoData()
 	}
 }
 
-function getCurrentNodeData(){
+async function getCurrentNodeData(){
 	let likeText = "0";
 	let chatText = "0";
 	let chatNums = 0;
@@ -619,7 +637,7 @@ function getCurrentNodeData(){
 			"datetime": datetime,
 		};
 		console.log(dataItem);
-		addFeishuData(dataItem);
+		await addFeishuData(dataItem);
 	} else {
 		showPromptMessagePopup("未找到笔记内容",2);
 	}
@@ -830,5 +848,9 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
 	else if(message.type == 'goto_start')
 	{
 		goStart();
+	}
+	else if(message.type == 'download_single_note')
+	{
+		goStartDownloadSingleNote();
 	}
 });
