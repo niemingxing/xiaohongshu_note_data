@@ -119,7 +119,7 @@ async function getFeishuToken() {
 	});
 }
 
-async function sendFeishuData(data) {
+async function sendFeishuData() {
 	if(!tenantAccessToken || !feishuTableId) return;
 	let records = [];
 	for(let i = 0; i < 100; i++)
@@ -136,6 +136,7 @@ async function sendFeishuData(data) {
 
 		records.push(aItem);
 	}
+
 	if(records.length <= 0) return;
 	await proxyAjaxRequest("https://open.feishu.cn/open-apis/bitable/v1/apps/" + feishuAppToken + "/tables/" + feishuTableId + "/records/batch_create", 'POST', {"Authorization":"Bearer " + tenantAccessToken,"Content-Type":"application/json; charset=utf-8"}, JSON.stringify({"records":records}),async function(response) {
 		if (response.status === 'success') {
@@ -197,7 +198,8 @@ async function addFeishuData(data) {
 				if(jsonData.data.total > 0) {
 					showPromptMessagePopup("已经同步飞书表格",2);
 				} else {
-					sendFeishuData(data);
+					addUniqueData(downloadData,data,'url');
+					addUniqueData(batchFeishuData,data,'url');
 				}
 			} else {
 				console.log('Error:', jsonData);
