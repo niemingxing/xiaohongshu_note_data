@@ -496,6 +496,96 @@ async function getSearchVideoData()
 	}
 }
 
+function getCurrentNodeData(){
+	let likeText = "0";
+	let chatText = "0";
+	let chatNums = 0;
+	let collectText = "0";
+	let collectNums = 0;
+	let desc = "";
+	let tags = "";
+	let date = "";
+	let datetime = "";
+	let author = "";
+	let userUrl = "";
+	let title = "";
+	let url = "";
+	
+	let noteContainer = document.querySelector("div#noteContainer");
+
+	if(noteContainer) {
+
+		let authorContainer= noteContainer.querySelector("div.author-container");
+		let titleItem = noteContainer.querySelector("div#detail-title");
+		let authorItem = authorContainer.querySelector("a.name");
+		author = authorItem.textContent;
+		userUrl = authorItem.href;
+		title = titleItem ? titleItem.innerText : "";
+		url = window.location.href;
+		let descElement = noteContainer.querySelector("div#detail-desc");
+		if(descElement) {
+			desc = descElement.innerText;
+			//获取 a.class=tag 的元素内容，空格分割
+			let tagsArr = [];
+			let tagElements = noteContainer.querySelectorAll("a.tag");
+			tagElements.forEach((tagElement) => {
+				tagsArr.push(tagElement.innerText);
+			});
+			tags = tagsArr.join(" ");
+		}
+		let interactContainer = noteContainer.querySelector("div.interact-container");
+		//获取点赞数
+		let likeElement = interactContainer.querySelector("span.like-wrapper");
+		if(likeElement) {
+			likeText = likeElement.innerText;
+			likeText = likeText.trim() == "赞" ? "0" : likeText;
+		}
+		likeNums = convertToNumber(likeText);
+
+		//获取收藏数
+		let colletcElement = interactContainer.querySelector("span#note-page-collect-board-guide");
+		if(colletcElement) {
+			collectText = colletcElement.innerText;
+			collectText = collectText.trim() == "收藏" ? "0" : collectText;
+		}
+		collectNums = convertToNumber(collectText);
+		//获取评论数
+		let chatElement = interactContainer.querySelector("span.chat-wrapper");
+		if(chatElement) {
+			chatText = chatElement.innerText;
+			chatText = chatText.trim() == "评论" ? "0" : chatText;
+		}
+		chatNums = convertToNumber(chatText);
+
+		//获取日期
+		let dateElement = noteContainer.querySelector("span.date");
+		if(dateElement) {
+			date = dateElement.innerText;
+			datetime = parseDate(date);
+		}
+		let dataItem = {
+			"author": author,
+			"author_url": userUrl,
+			"title": title,
+			"desc": desc,
+			"tags": tags,
+			"url": url,
+			"like_text": likeText,
+			"like_nums": `${likeNums}`,
+			"collect_text":collectText,
+			"collect_nums": `${collectNums}`,
+			"chat_text": chatText,
+			"chat_nums": `${chatNums}`,
+			"date": date,
+			"datetime": datetime,
+		};
+		console.log(dataItem);
+		addFeishuData(dataItem);
+	} else {
+		showPromptMessagePopup("未找到笔记内容",2);
+	}
+}
+
 function addUniqueData(arr, newData,key) {
 	if (!arr.some(item => item[key] === newData[key])) {
 		arr.push(newData);
