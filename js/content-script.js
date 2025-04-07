@@ -33,20 +33,14 @@ function downloadCsv(csvContent)
  */
 function initDownloadButton() {
 	const html = '<div class="gpt-sr-container">\n' +
-		'    <div class="gpt-sr-sidebar">\n' +
-		'      <button id="xhs-sr-toggleButton">数据下载</button>\n' +
-		'    </div>\n' +
-		'  </div>\n' +
-		'  \n' +
-		'  <div id="gpt-sr-popup" class="gpt-sr-popup">\n' +
-		'    <button class="gpt-sr-close-btn">&times;</button>\n' +
-		'	 <button class="gpt-sr-starting-btn">开始执行</button>\n' +
-		'    <div class="gpt-sr-content">\n' +
-		'      <h2 class="gpt-sr-title">关键词列表</h2>\n' +
-		'      <ul class="gpt-sr-list">\n' +
-		'      </ul>\n' +
-		'    </div>\n' +
-		'  </div>';
+	'    <div class="gpt-sr-toggle-arrow collapsed">◀</div>\n' + // 将箭头移到外部
+	'    <div class="gpt-sr-sidebar collapsed">\n' +
+	'      <div class="gpt-sr-button-group">\n' +
+	'        <button id="xhs-sr-toggleButton" class="gpt-sr-btn">数据下载</button>\n' +
+	'        <button id="xhs-sr-singleButton" class="gpt-sr-btn">单篇下载</button>\n' +
+	'      </div>\n' +
+	'    </div>\n' +
+	'  </div>';
 	const popupElement = document.createElement("div");
 	popupElement.innerHTML = html;
 	document.body.appendChild(popupElement);
@@ -55,6 +49,22 @@ function initDownloadButton() {
 		chrome.runtime.sendMessage({"type":"check_mkey"}, function (response) {
 			console.log(response.farewell)
 		});
+	});
+	// 为单篇下载按钮添加事件监听
+	document.querySelector("#xhs-sr-singleButton").addEventListener("click", function() {
+		this.disabled = true;
+		// chrome.runtime.sendMessage({"type":"check_mkey"}, function (response) {
+		// 	console.log(response.farewell)
+		// });
+	});
+	
+	// 为箭头添加点击事件
+	const arrow = document.querySelector(".gpt-sr-toggle-arrow");
+	const sidebar = document.querySelector(".gpt-sr-sidebar");
+	
+	arrow.addEventListener("click", function() {
+		sidebar.classList.toggle("collapsed");
+		this.classList.toggle("collapsed");
 	});
 }
 
@@ -144,7 +154,7 @@ async function sendFeishuData() {
 }
 
 async function createFeishuTable() {
-	if(!tenantAccessToken) return;
+	if(!tenantAccessToken || feishuTableId) return;
 	//根据 tableHeader tableKeys 生成对应的数据
 	let fields = [];
 	for(let i = 0; i < tableHeader.length; i++) {
@@ -653,6 +663,7 @@ function initSetting(callback)
         feishuAppId = getSettingValue("app_id","");
 		feishuAppSecret = getSettingValue("app_secret","");
 		feishuAppToken = getSettingValue("app_token","");
+		feishuTableId = getSettingValue("table_id","");
 		// 在这里使用存储的值
         console.log(downloadNums);
         if(callback) callback();

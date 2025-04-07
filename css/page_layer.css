@@ -7,25 +7,6 @@
     align-items:center;
     z-index: 9999;
 }
-.gpt-sr-sidebar {
-    position: relative;
-    width: 35px;
-    background-color: #f2f2f2;
-    text-align: center;
-}
-#xhs-sr-toggleButton {
-    position: absolute;
-    top: 150px;
-    right: 0;
-    transform: translateY(-50%);
-    padding: 10px 10px;
-    background-color: #f81937;
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    border-top-left-radius: 5px;
-    border-bottom-left-radius: 5px;
-}
 
 .gpt-sr-sidebar button:disabled {
     background-color: #ccc !important;
@@ -248,4 +229,99 @@
         left: 100%;
         width: 0;
     }
+}
+
+
+.gpt-sr-toggle-arrow:hover {
+    background-color: #d61730;
+}
+
+/* 收起状态的侧边栏 - 确保有正确的过渡效果 */
+.gpt-sr-sidebar.collapsed {
+    transform: translateY(-50%) translateX(150%);
+    opacity: 0;
+    visibility: hidden;
+}
+
+/* 按钮组样式调整 */
+.gpt-sr-button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%; /* 确保按钮组占满容器宽度 */
+}
+
+.gpt-sr-btn {
+    padding: 8px 12px;
+    background-color: #f81937;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+    white-space: nowrap;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    width: 100%; /* 确保按钮占满容器宽度 */
+    overflow: visible; /* 确保内容不被裁剪 */
+}
+
+.gpt-sr-btn:hover {
+    background-color: #d61730;
+}
+
+.gpt-sr-btn:disabled {
+    background-color: #ccc;
+    color: #888;
+    cursor: not-allowed;
+}
+
+/* 修改箭头样式 - 调整位置使其贴在右侧 */
+.gpt-sr-toggle-arrow {
+    position: fixed;
+    right: 20px; /* 贴近右侧边缘 */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    background-color: #f81937;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    z-index: 10001;
+    transition: transform 0.3s, right 0.3s;
+}
+
+/* 收起状态的箭头位置和旋转 - 修正旋转方向 */
+.gpt-sr-toggle-arrow.collapsed {
+    transform: translateY(-50%) rotate(0deg); /* 收起状态下不旋转 */
+    right: 20px; /* 保持位置不变 */
+}
+
+/* 展开状态的箭头旋转 */
+.gpt-sr-toggle-arrow:not(.collapsed) {
+    transform: translateY(-50%) rotate(180deg); /* 展开状态下旋转180度 */
+}
+
+/* 修改侧边栏样式 - 确保有正确的过渡效果 */
+.gpt-sr-sidebar {
+    position: fixed;
+    right: 50px; /* 与箭头保持距离，避免重叠 */
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10000;
+    background-color: rgba(255, 255, 255, 0.95);
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: auto;
+    max-width: 150px;
+    transition: all 0.3s ease;
+    overflow: hidden;
 }
