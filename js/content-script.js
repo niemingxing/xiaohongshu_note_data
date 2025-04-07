@@ -53,9 +53,8 @@ function initDownloadButton() {
 	// 为单篇下载按钮添加事件监听
 	document.querySelector("#xhs-sr-singleButton").addEventListener("click", function() {
 		this.disabled = true;
-		// chrome.runtime.sendMessage({"type":"check_mkey"}, function (response) {
-		// 	console.log(response.farewell)
-		// });
+		getCurrentNodeData();
+		this.disabled = false;
 	});
 	
 	// 为箭头添加点击事件
@@ -120,7 +119,7 @@ async function getFeishuToken() {
 	});
 }
 
-async function sendFeishuData() {
+async function sendFeishuData(data) {
 	if(!tenantAccessToken || !feishuTableId) return;
 	let records = [];
 	for(let i = 0; i < 100; i++)
@@ -178,6 +177,44 @@ async function createFeishuTable() {
 			console.log('Error:', response.message);
 		}
 	});
+}
+
+
+async function addFeishuData(data) {
+	if(!tenantAccessToken || !feishuTableId) return;
+	let xhsKey = extractXhsKey(data.url);
+	console.log("获取" + xhsKey + "的数据");
+	recordIds = [];
+	skuIds = [];
+	let url = "https://open.feishu.cn/open-apis/bitable/v1/apps/" + feishuAppToken + "/tables/" + feishuTableId + "/records/search?page_size=500";
+	await proxyAjaxRequest(url, 'POST', {"Authorization":"Bearer " + tenantAccessToken,"Content-Type":"application/json; charset=utf-8"}, JSON.stringify({"filter":{"conjunction":"and","conditions":[{"field_name": "笔记地址","operator": "contains","value": [xhsKey]}]}}),async function(response) {
+		if(!response) return;
+		if (response.status === 'success') {
+			//response.data 转json
+			let jsonData = JSON.parse(response.data);
+			console.log(jsonData);
+			if(jsonData.code == 0) {
+				if(jsonData.data.total > 0) {
+					showPromptMessagePopup("已经同步飞书表格",2);
+				} else {
+					sendFeishuData(data);
+				}
+			} else {
+				console.log('Error:', jsonData);
+			}
+		} else {
+			console.log('Error:', response.message);
+		}
+	});
+}
+
+function extractXhsKey(url) {
+    // 使用正则表达式匹配 /explore/ 后的字母和数字组合
+    const regex = /\/explore\/([a-z0-9]+)/;
+    const match = url.match(regex);
+    
+    // 如果匹配成功，返回提取的字符串，否则返回 null
+    return match ? match[1] : null;
 }
 
 async function goStart() {
