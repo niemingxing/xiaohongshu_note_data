@@ -201,9 +201,7 @@ async function addFeishuData(data) {
 					showPromptMessagePopup("已经同步飞书表格",2);
 				} else {
 					showPromptMessagePopup("同步飞书表格成功",2);
-					addUniqueData(downloadData,data,'url');
 					addUniqueData(batchFeishuData,data,'url');
-					updateDownloadButtonVideoCount();
 				}
 			} else {
 				console.log('Error:', jsonData);
@@ -637,6 +635,8 @@ async function getCurrentNodeData(){
 			"datetime": datetime,
 		};
 		console.log(dataItem);
+		addUniqueData(downloadData,dataItem,'url');
+		updateDownloadButtonVideoCount();
 		await addFeishuData(dataItem);
 	} else {
 		showPromptMessagePopup("未找到笔记内容",2);
