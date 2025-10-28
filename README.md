@@ -60,6 +60,9 @@
 
 <img width="1497" alt="image" src="https://github.com/user-attachments/assets/5de07a0a-44c4-4f81-a789-a96b3c45063a">
 
+6.获取多维表格tableid
+
+<img width="1414" height="818" alt="image" src="https://github.com/user-attachments/assets/5b32a1ae-20df-4470-8d78-cef0697edc14" />
 
 ### 沟通交流：
 
