@@ -24,6 +24,8 @@
 
 <img width="1273" alt="image" src="https://github.com/niemingxing/xiaohongshu_note_data/assets/7400829/eaeb4f52-816e-49d4-afcd-0860cd7cc436">
 
+<img width="1505" height="761" alt="image" src="https://github.com/user-attachments/assets/f5fcc176-5304-4db4-8036-afa3c15ac266" />
+
 <img width="1274" alt="image" src="https://github.com/niemingxing/xiaohongshu_note_data/assets/7400829/8a08a553-4407-4e8a-afb7-daa34eeebde0">
 
 <img width="1277" alt="image" src="https://github.com/niemingxing/xiaohongshu_note_data/assets/7400829/64d3ab5e-75a3-47e9-a6b0-bc8b9e5ec4bf">
