@@ -1,5 +1,4 @@
 ﻿let currentDomain = window.location.hostname;
-let currentUrl = window.location.href;
 let downloadData = [];
 let downloadUserData = [];
 let downloadNums = 0;
@@ -12,6 +11,66 @@ let batchFeishuData = [];
 let timeInterval = 0;
 let tableHeader = [];
 let tableKeys = [];
+
+/**
+ * 向侧边栏发送一条日志
+ * @param text 日志内容
+ * @param level info | success | warn | error
+ */
+function logMsg(text, level = 'info') {
+	console.log('[XHS]', text);
+	try {
+		chrome.runtime.sendMessage({ type: 'collect_log', text: text, level: level });
+	} catch (e) {
+		// 侧边栏未打开时忽略
+	}
+}
+
+/**
+ * 向侧边栏同步已采集条数
+ * @param count
+ */
+function sendStat(count) {
+	try {
+		chrome.runtime.sendMessage({ type: 'collect_stat', count: count });
+	} catch (e) {}
+}
+
+const COLLECTED_KEY = 'nmx_xhs_collected';
+
+/**
+ * 持久化已采集数据到本地存储，刷新/重开页面不丢失
+ */
+function saveCollected() {
+	try {
+		chrome.storage.local.set({ [COLLECTED_KEY]: { notes: downloadData, users: downloadUserData } });
+	} catch (e) {}
+}
+
+/**
+ * 从本地存储恢复已采集数据
+ */
+function loadCollected(callback) {
+	chrome.storage.local.get(COLLECTED_KEY, function (data) {
+		if (data && data[COLLECTED_KEY]) {
+			downloadData = data[COLLECTED_KEY].notes || [];
+			downloadUserData = data[COLLECTED_KEY].users || [];
+		}
+		if (callback) callback();
+	});
+}
+
+/**
+ * 清空已采集数据（内存 + 存储）
+ */
+function clearCollected() {
+	downloadData = [];
+	downloadUserData = [];
+	batchFeishuData = [];
+	saveCollected();
+	sendStat(0);
+}
+
 /**
  * 保存内容为csv文件
  * @param csvContent
@@ -26,52 +85,6 @@ function downloadCsv(csvContent)
 	link.href = URL.createObjectURL(blob);
 	link.download = "data(" + currentDomain+ ").csv";
 	link.click();
-}
-
-/**
- * 初始化弹层
- */
-function initDownloadButton() {
-	const html = '<div class="gpt-sr-container">\n' +
-	'    <div class="gpt-sr-toggle-arrow collapsed">◀</div>\n' + // 将箭头移到外部
-	'    <div class="gpt-sr-sidebar collapsed">\n' +
-	'      <div class="gpt-sr-button-group">\n' +
-	'        <button id="xhs-sr-toggleButton" class="gpt-sr-btn">数据下载</button>\n' +
-	'        <button id="xhs-sr-singleButton" class="gpt-sr-btn">单篇下载</button>\n' +
-	'      </div>\n' +
-	'    </div>\n' +
-	'  </div>';
-	const popupElement = document.createElement("div");
-	popupElement.innerHTML = html;
-	document.body.appendChild(popupElement);
-	document.querySelector("#xhs-sr-toggleButton").addEventListener("click", function() {
-		this.disabled = true;
-		chrome.runtime.sendMessage({"type":"check_mkey"}, function (response) {
-			console.log(response.farewell)
-		});
-	});
-	// 为单篇下载按钮添加事件监听
-	document.querySelector("#xhs-sr-singleButton").addEventListener("click", function() {
-		this.disabled = true;
-		chrome.runtime.sendMessage({"type":"download_single_note"}, function (response) {
-			console.log(response.farewell)
-		});
-		this.disabled = false;
-	});
-	
-	// 为箭头添加点击事件
-	const arrow = document.querySelector(".gpt-sr-toggle-arrow");
-	const sidebar = document.querySelector(".gpt-sr-sidebar");
-	
-	arrow.addEventListener("click", function() {
-		sidebar.classList.toggle("collapsed");
-		this.classList.toggle("collapsed");
-	});
-}
-
-function activiteDownloadButton()
-{
-	document.querySelector("#xhs-sr-toggleButton").disabled = false;
 }
 
 function initTableInfo() {
@@ -111,12 +124,12 @@ async function getFeishuToken() {
 			let jsonData = JSON.parse(response.data);
 			if(jsonData.code == 0) {
 				tenantAccessToken = jsonData.tenant_access_token;
-				console.log('获取飞书token成功');
+				logMsg('获取飞书 token 成功', 'success');
 			} else {
-				console.log('Error:', jsonData);
+				logMsg('获取飞书 token 失败：' + (jsonData.msg || jsonData.code), 'error');
 			}
 		} else {
-			console.log('Error:', response.message);
+			logMsg('获取飞书 token 请求异常：' + response.message, 'error');
 		}
 	});
 }
@@ -145,12 +158,12 @@ async function sendFeishuData() {
 			//response.data 转json
 			let jsonData = JSON.parse(response.data);
 			if(jsonData.code == 0) {
-				console.log('同步飞书数据成功');
+				logMsg(`已同步 ${records.length} 条数据到飞书`, 'success');
 			} else {
-				console.log('Error:', jsonData);
+				logMsg('同步飞书数据失败：' + (jsonData.msg || jsonData.code), 'error');
 			}
 		} else {
-			console.log('Error:', response.message);
+			logMsg('同步飞书数据请求异常：' + response.message, 'error');
 		}
 	});
 }
@@ -172,12 +185,12 @@ async function createFeishuTable() {
 			let jsonData = JSON.parse(response.data);
 			if(jsonData.code == 0) {
 				feishuTableId = jsonData.data.table_id;
-				console.log('创建飞书表格成功');
+				logMsg('已自动创建飞书表格：' + tableName, 'success');
 			} else {
-				console.log('Error:', jsonData);
+				logMsg('创建飞书表格失败：' + (jsonData.msg || jsonData.code), 'error');
 			}
 		} else {
-			console.log('Error:', response.message);
+			logMsg('创建飞书表格请求异常：' + response.message, 'error');
 		}
 	});
 }
@@ -186,28 +199,23 @@ async function createFeishuTable() {
 async function addFeishuData(data) {
 	if(!tenantAccessToken || !feishuTableId) return;
 	let xhsKey = extractXhsKey(data.url);
-	console.log("获取" + xhsKey + "的数据");
-	recordIds = [];
-	skuIds = [];
 	let url = "https://open.feishu.cn/open-apis/bitable/v1/apps/" + feishuAppToken + "/tables/" + feishuTableId + "/records/search?page_size=500";
 	await proxyAjaxRequest(url, 'POST', {"Authorization":"Bearer " + tenantAccessToken,"Content-Type":"application/json; charset=utf-8"}, JSON.stringify({"filter":{"conjunction":"and","conditions":[{"field_name": "笔记地址","operator": "contains","value": [xhsKey]}]}}),async function(response) {
 		if(!response) return;
 		if (response.status === 'success') {
-			//response.data 转json
 			let jsonData = JSON.parse(response.data);
-			console.log(jsonData);
 			if(jsonData.code == 0) {
 				if(jsonData.data.total > 0) {
-					showPromptMessagePopup("已经同步飞书表格",2);
+					logMsg('该笔记已存在于飞书表格，跳过', 'warn');
 				} else {
-					showPromptMessagePopup("同步飞书表格成功",2);
+					logMsg('已加入飞书同步队列', 'success');
 					addUniqueData(batchFeishuData,data,'url');
 				}
 			} else {
-				console.log('Error:', jsonData);
+				logMsg('查询飞书数据失败：' + (jsonData.msg || jsonData.code), 'error');
 			}
 		} else {
-			console.log('Error:', response.message);
+			logMsg('查询飞书数据请求异常：' + response.message, 'error');
 		}
 	});
 }
@@ -222,6 +230,15 @@ function extractXhsKey(url) {
 }
 
 async function goStart() {
+	let pageType = getPageType();
+	const typeName = {
+		"search_result_note": "搜索笔记页",
+		"search_result_user": "搜索用户页",
+		"user_profile": "博主主页",
+		"explore_result_note": "推荐/笔记页"
+	}[pageType] || "未知页面";
+	logMsg(`开始采集，页面类型：${typeName}`, 'info');
+	// 不重置数据：单篇采集与自动采集累计计数（getSearchVideoData 内按 url 去重，不会重复）
 	initTableInfo();
 	await getFeishuToken();
 	await createFeishuTable();
@@ -229,74 +246,87 @@ async function goStart() {
 }
 
 async function goStartDownloadSingleNote() {
+	logMsg('开始采集当前单篇笔记…', 'info');
 	initTableInfo();
 	await getFeishuToken();
 	await createFeishuTable();
 	await getCurrentNodeData();
-	setInterval(function() {
+	startFeishuSyncTimer();
+}
+
+let feishuSyncTimer = null;
+
+/**
+ * 启动飞书同步定时器（只启动一次，避免重复注册）
+ */
+function startFeishuSyncTimer()
+{
+	if(feishuSyncTimer) return;
+	feishuSyncTimer = setInterval(function() {
 		sendFeishuData();
 	},5000);
 }
 
 function initOtherActon()
 {
-	setInterval(function() {
-		sendFeishuData();
-	},5000);
+	startFeishuSyncTimer();
 
 	getSearchVideoData().then(() => {
 		let dataNums = updateDownloadButtonVideoCount();
 		if(downloadNums > 0 && dataNums < downloadNums){
+			logMsg(`已采集 ${dataNums}/${downloadNums} 条，继续下滑加载更多…`, 'info');
 			// 屏幕下滑一段距离
 			window.scrollBy(0, 200);
 			// 再次调用自身
 			setTimeout(initOtherActon, 1500);
+		} else {
+			logMsg(`采集完成，共 ${dataNums} 条，可点击「导出 CSV」保存`, 'success');
 		}
     });
 }
 
+let promptHideTimer = null;
+
 /**
- * 初始化提示窗
+ * 初始化提示 Toast（顶部滑入）
  */
 function initPromptMessagePopup()
 {
-	let html = "<div id=\"nmx_xhs_popup\" class=\"custom-popup\">\n" +
-		"\t\t<div class=\"custom-popup-overlay\"></div>\n" +
-		"\t\t<div class=\"custom-popup-content\">\n" +
-		"\t\t\t<span id=\"nmx_xhs_popup_message\" class=\"custom-popup-question\"></span>\n" +
-		"\t\t\t<button id=\"nmx_xhs_close_popupbtn\" class=\"custom-popup-close-btn\">确认</button>\n" +
-		"\t\t</div>\n" +
-		"\t</div>";
-	const popupElement = document.createElement("div");
-	popupElement.innerHTML = html;
-	document.body.appendChild(popupElement);
-	// 获取弹窗元素
-	const popup = document.getElementById('nmx_xhs_popup');
-	// 获取关闭按钮元素
-	const closeButton = document.getElementById('nmx_xhs_close_popupbtn');
+	if(document.getElementById('nmx_xhs_popup')) return;
+	const toast = document.createElement("div");
+	toast.id = "nmx_xhs_popup";
+	toast.className = "xhs-toast";
+	toast.innerHTML =
+		"<span class=\"xhs-toast-icon\"></span>" +
+		"<span id=\"nmx_xhs_popup_message\" class=\"xhs-toast-msg\"></span>" +
+		"<button id=\"nmx_xhs_close_popupbtn\" class=\"xhs-toast-close\" aria-label=\"关闭\">&times;</button>";
+	document.body.appendChild(toast);
 
-	// 点击关闭按钮关闭弹窗
-	closeButton.addEventListener('click', function (){
-		popup.style.display = 'none';
+	document.getElementById('nmx_xhs_close_popupbtn').addEventListener('click', function (){
+		hidePromptMessagePopup();
 	});
 }
 
-// 显示弹窗并设置错误提示文字
-function showPromptMessagePopup(message,type =1) {
-	// 获取弹窗元素
-	const popup = document.getElementById('nmx_xhs_popup');
-	// 获取错误提示元素
-	const errorText = document.getElementById('nmx_xhs_popup_message');
-	errorText.textContent = message;
-	popup.style.display = 'block';
-	if(type == 2)
-	{
-		// 获取关闭按钮元素
-		const closeButton = document.getElementById('nmx_xhs_close_popupbtn');
+function hidePromptMessagePopup() {
+	const toast = document.getElementById('nmx_xhs_popup');
+	if(toast) toast.classList.remove('show');
+}
+
+// 显示提示 Toast；type=2 时 3 秒后自动消失且不显示关闭按钮
+function showPromptMessagePopup(message, type = 1) {
+	const toast = document.getElementById('nmx_xhs_popup');
+	if(!toast) return;
+	document.getElementById('nmx_xhs_popup_message').textContent = message;
+	const closeButton = document.getElementById('nmx_xhs_close_popupbtn');
+
+	if(promptHideTimer) { clearTimeout(promptHideTimer); promptHideTimer = null; }
+	toast.classList.add('show');
+
+	if(type == 2) {
 		closeButton.style.display = 'none';
-		setTimeout(function (){
-			closeButton.click();
-		},3000);
+		promptHideTimer = setTimeout(hidePromptMessagePopup, 3000);
+	} else {
+		closeButton.style.display = '';
 	}
 }
 
@@ -313,18 +343,11 @@ function addStylesheet(url) {
 }
 
 /**
- * 开始下载
- */
-function startDownload()
-{
-	startDataDownload();
-}
-
-/**
- * 数据下载
+ * 数据下载：把已采集数据导出为 CSV
  */
 function startDataDownload()
 {
+	if(tableHeader.length == 0) initTableInfo();
 	let listData = [];
 	let pageType = getPageType();
 	if(pageType == "search_result_note" || pageType == "user_profile" || pageType == "explore_result_note")
@@ -335,8 +358,14 @@ function startDataDownload()
 	{
 		listData = downloadUserData;
 	}
+	if(listData.length == 0)
+	{
+		logMsg('暂无可导出的数据，请先点击「开始采集」', 'warn');
+		return;
+	}
 	let csvContent = convertToCSVContent(listData,tableHeader,tableKeys);
 	downloadCsv(csvContent);
+	logMsg(`已导出 ${listData.length} 条数据到 CSV`, 'success');
 }
 
 /**
@@ -345,48 +374,30 @@ function startDataDownload()
  */
 function getPageType()
 {
-	currentUrl = window.location.href;
-	let pageType = '';
-	console.log(currentUrl);
+	let currentUrl = window.location.href;
 	if(currentUrl.includes("https://www.xiaohongshu.com/search_result"))
 	{
-		if(currentUrl.includes("search_type=user"))
-		{
-			pageType = "search_result_user";
-		}
-		else
-		{
-			pageType = "search_result_note";
-		}
+		return currentUrl.includes("search_type=user") ? "search_result_user" : "search_result_note";
 	}
-	else if(currentUrl.includes("https://www.xiaohongshu.com/user/profile"))
+	if(currentUrl.includes("https://www.xiaohongshu.com/user/profile"))
 	{
-		pageType = "user_profile";
+		return "user_profile";
 	}
-	else if(currentUrl.includes("https://www.xiaohongshu.com/explore"))
+	if(currentUrl.includes("https://www.xiaohongshu.com/explore"))
 	{
-		pageType = "explore_result_note";
+		return "explore_result_note";
 	}
-	console.log(pageType);
-	return pageType;
+	return '';
 }
 
 /**
- * 更新按钮统计文案
+ * 更新侧边栏采集数量统计
  */
 function updateDownloadButtonVideoCount()
 {
-	let buttonElement = document.querySelector("#xhs-sr-toggleButton");
 	let dataNums = getSearchVideoCount();
-	let pageType = getPageType();
-	if(pageType == "search_result_note" || pageType == "user_profile" || pageType == "explore_result_note")
-	{
-		buttonElement.textContent = "笔记数据下载(" + dataNums + ")";
-	}
-	else if(pageType == "search_result_user")
-	{
-		buttonElement.textContent = "用户数据下载(" + dataNums + ")";
-	}
+	sendStat(dataNums);
+	saveCollected();
 	return dataNums;
 }
 
@@ -419,7 +430,6 @@ async function getSearchVideoData()
 	pageType = getPageType();
 	if(pageType == "search_result_note" || pageType == "user_profile" || pageType == "explore_result_note") {
 		items = document.querySelectorAll("div.feeds-container section");
-		console.log(items.length);
 		for (let i = 0; i < items.length; i++) {
 			let node = items[i];
 			// 操作每个节点的代码
@@ -427,13 +437,13 @@ async function getSearchVideoData()
 			let titleItem = node.querySelector("a.title");
 			let linkItem = node.querySelector("a.cover");
 			let likeItem = node.querySelector("span.like-wrapper span.count");
-			if(authorItem)
+			if(authorItem && linkItem)
 			{
 				let author = authorItem.innerText;
 				let userUrl = authorItem.href;
 				let title = titleItem ? titleItem.innerText : "";
 				let url = linkItem.href;
-				let likeText = likeItem.innerText;
+				let likeText = likeItem ? likeItem.innerText : "0";
 				likeText = likeText.trim() == "赞" ? "0" : likeText;
 				let likeNums = convertToNumber(likeText);
 
@@ -441,7 +451,7 @@ async function getSearchVideoData()
 
 				if(downloadNums > 0 && downloadData.length >= downloadNums) break;
 
-				node.querySelector("a.cover").click();
+				linkItem.click();
 				await new Promise(resolve => setTimeout(resolve, timeInterval * 1000));
 				let chatText = "0";
 				let chatNums = 0;
@@ -508,16 +518,16 @@ async function getSearchVideoData()
 					"date": date,
 					"datetime": datetime,
 				};
-				console.log(title);
 				addUniqueData(downloadData,dataItem,'url');
 				addUniqueData(batchFeishuData,dataItem,'url');
+				logMsg(`已采集(${downloadData.length})：${title || author || '无标题笔记'}`, 'info');
+				sendStat(downloadData.length);
 			}
 		}
 	}
 	else if(pageType == "search_result_user") {
 		downloadUserData = [];
 		items = document.querySelectorAll("div.feeds-page div.user-list-item");
-		console.log(items.length);
 		items.forEach((node) => {
 			if(downloadNums > 0 && downloadUserData.length >= downloadNums) return;
 			// 操作每个节点的代码
@@ -543,15 +553,22 @@ async function getSearchVideoData()
 					"fans_nums": fansNums,
 					"note_nums": noteNums,
 				};
-				//console.log(author);
 				downloadUserData.push(dataItem);
 				batchFeishuData.push(dataItem);
 			}
 		});
+		logMsg(`已采集 ${downloadUserData.length} 个用户`, 'info');
+		sendStat(downloadUserData.length);
 	}
 }
 
 async function getCurrentNodeData(){
+	// 单篇采集同样受采集数量上限限制（与自动采集累计计算）
+	if(downloadNums > 0 && downloadData.length >= downloadNums) {
+		logMsg(`已达到采集数量上限(${downloadNums})，单篇采集已跳过`, 'warn');
+		showPromptMessagePopup(`已达到采集数量上限(${downloadNums})`, 2);
+		return;
+	}
 	let likeText = "0";
 	let chatText = "0";
 	let chatNums = 0;
@@ -595,7 +612,7 @@ async function getCurrentNodeData(){
 			likeText = likeElement.innerText;
 			likeText = likeText.trim() == "赞" ? "0" : likeText;
 		}
-		likeNums = convertToNumber(likeText);
+		let likeNums = convertToNumber(likeText);
 
 		//获取收藏数
 		let colletcElement = interactContainer.querySelector("span#note-page-collect-board-guide");
@@ -634,11 +651,12 @@ async function getCurrentNodeData(){
 			"date": date,
 			"datetime": datetime,
 		};
-		console.log(dataItem);
 		addUniqueData(downloadData,dataItem,'url');
 		updateDownloadButtonVideoCount();
+		logMsg(`已采集单篇：${title || author || '无标题笔记'}`, 'success');
 		await addFeishuData(dataItem);
 	} else {
+		logMsg('未找到笔记内容，请在笔记详情页再试', 'error');
 		showPromptMessagePopup("未找到笔记内容",2);
 	}
 }
@@ -675,15 +693,7 @@ function convertToNumber(str) {
 	const match = str.match(/(\d+(\.\d+)?)/);
 	if (match) {
 		const num = parseFloat(match[1]);
-		if(str.includes("w"))
-		{
-			return num * 10000;
-		}
-		else if(str.includes("万"))
-		{
-			return num * 10000;
-		}
-		return num;
+		return (str.includes("w") || str.includes("万")) ? num * 10000 : num;
 	}
 	return str;
 }
@@ -784,20 +794,6 @@ function convertToCSVContent(data,header=[],keysArr = []) {
 	return [pHeader.join(",")].concat(rows).join("\n");
 }
 
-/**
- * 提取账号
- * @param text
- * @returns {null|*}
- */
-function extractIDs(text) {
-	const regex = /[\w\-+.]{6,20}/g; // 贪婪匹配，匹配包含字母、数字、下划线、连字符、加号和点号的字符序列
-	const matches = text.match(regex);
-	if (matches && matches.length > 0) {
-		return matches.join("、");
-	}
-	return null; // 未找到微信号
-}
-
 function initSetting(callback)
 {
     // 获取存储的值
@@ -811,46 +807,62 @@ function initSetting(callback)
 		feishuAppSecret = getSettingValue("app_secret","");
 		feishuAppToken = getSettingValue("app_token","");
 		feishuTableId = getSettingValue("table_id","");
-		// 在这里使用存储的值
-        console.log(downloadNums);
         if(callback) callback();
     });
 }
 
-// 在页面加载完成后插入弹层和引入CSS文件
-window.onload = function() {
-	if(currentDomain.includes("www.xiaohongshu.com"))
-	{
-		initPromptMessagePopup();
-		initDownloadButton();
-		initSetting();
-		addStylesheet("css/page_layer.css");
-	}
-};
+// 初始化：引入CSS、读取设置、创建提示弹层。
+// 兼容两种注入方式：manifest 页面加载注入 与 sidepanel 按需注入（晚于 onload）。
+function initXhs() {
+	if(window.__xhsInited) return;
+	if(!currentDomain.includes("www.xiaohongshu.com")) return;
+	window.__xhsInited = true;
+	initPromptMessagePopup();
+	initSetting();
+	loadCollected(function() { sendStat(getSearchVideoCount()); });
+	addStylesheet("css/page_layer.css");
+}
+if(document.readyState === 'complete' || document.readyState === 'interactive') {
+	initXhs();
+} else {
+	window.addEventListener('DOMContentLoaded', initXhs);
+	window.addEventListener('load', initXhs);
+}
 /**
  * 事件监听
  */
 chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
+	if(message && message.type == 'ping') { sendResponse({ ok: true }); return true; }
+	if(message && message.type == 'get_stat') { sendResponse({ count: getSearchVideoCount() }); return true; }
+	if(message && message.type == 'clear_data') { clearCollected(); sendResponse({ ok: true }); return true; }
 	window.focus();
-	console.log(message.type);
 	if(message.type == 'check_mkey_complete')
 	{
-		activiteDownloadButton();
-		if(message.data.hasOwnProperty("code") && message.data.code !=0)
+		if(message.data && message.data.hasOwnProperty("code") && message.data.code != 0)
 		{
+			logMsg(message.data.message || '密钥校验未通过', 'error');
 			showPromptMessagePopup(message.data.message);
 		}
 		else
 		{
-			startDownload();
+			// 每次操作前重新读取最新设置，确保侧边栏改动即时生效
+			initSetting(function() { startDataDownload(); });
 		}
 	}
 	else if(message.type == 'goto_start')
 	{
-		goStart();
+		initSetting(function() { goStart(); });
 	}
 	else if(message.type == 'download_single_note')
 	{
-		goStartDownloadSingleNote();
+		if(message.data && message.data.hasOwnProperty("code") && message.data.code != 0)
+		{
+			logMsg(message.data.message || '密钥校验未通过', 'error');
+			showPromptMessagePopup(message.data.message);
+		}
+		else
+		{
+			initSetting(function() { goStartDownloadSingleNote(); });
+		}
 	}
 });

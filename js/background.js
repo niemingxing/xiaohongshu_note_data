@@ -1,6 +1,11 @@
 let mKey = '';
+
+// 点击工具栏图标时打开侧边栏
+chrome.sidePanel
+    .setPanelBehavior({ openPanelOnActionClick: true })
+    .catch((error) => console.log('setPanelBehavior error:', error));
+
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-        console.log(request.type);
         if(request.type == 'check_mkey')
         {
             initSetting(function (){
@@ -66,7 +71,6 @@ function checkMKey(callback)
         // response.json()是一个异步操作，取出所有内容，并将其转为 JSON 对象
         .then(response => response.json())
         .then(json => {
-            console.log(json);
             if(callback) callback(json);
         })
         .catch(err => {
@@ -80,8 +84,6 @@ function initSetting(callback)
     // 获取存储的值
     chrome.storage.local.get('nmx_xhs_setting', function (data) {
         mKey = (data.hasOwnProperty("nmx_xhs_setting") && data.nmx_xhs_setting.hasOwnProperty("mkey")) ? data.nmx_xhs_setting.mkey : '';
-        // 在这里使用存储的值
-        console.log(mKey);
         if(callback) callback();
     });
 }

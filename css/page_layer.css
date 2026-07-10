@@ -1,327 +1,64 @@
-.gpt-sr-container {
+/* ---------- 页面顶部滑入 Toast 提示 ---------- */
+.xhs-toast {
     position: fixed;
-    top: 0;
-    right: 0;
-    height: 100%;
-    display: flex;
-    align-items:center;
-    z-index: 9999;
-}
-
-.gpt-sr-sidebar button:disabled {
-    background-color: #ccc !important;
-    color: #888 !important;
-    cursor: not-allowed !important;
-}
-
-.gpt-sr-popup {
-    position: fixed;
-    top: 0;
-    left: 100%;
-    width: 0;
-    height: 100%;
-    overflow-y: auto;
-    background-color: #f9f9f9;
-    transition: left 0.3s ease-in-out;
-    z-index: 999;
-}
-.gpt-sr-popup.gpt-sr-active {
-    left: calc(100% - 400px);
-    width: 400px;
-}
-.gpt-sr-content {
-    padding: 5px 20px 20px 20px;
-}
-.gpt-sr-title {
-    font-weight: bold;
-    margin-bottom: 10px;
-    color: #333;
-    font-size: 18px;
-}
-.gpt-sr-list {
-    list-style: none;
-    padding: 0;
-    max-height: 100%;
-    overflow-y: auto;
-}
-.gpt-sr-list-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-    padding: 10px;
-    background-color: #fff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    font-size: 14px;
-}
-.gpt-sr-list-item:last-child {
-    margin-bottom: 0;
-}
-.gpt-sr-keyword {
-    width: 200px;
-    white-space: nowrap; /* 不换行 */
-    overflow: hidden; /* 溢出部分隐藏 */
-    text-overflow: ellipsis; /* 使用省略号替代溢出部分 */
-}
-
-.gpt-sr-keyword a{
-    color: blue;
-}
-
-.gpt-sr-status {
-    text-transform: uppercase;
-    font-weight: bold;
-    color: #888;
-}
-.gpt-sr-actions {
-    display: flex;
-    gap: 5px;
-}
-.gpt-sr-actions button {
-    padding: 2px 8px;
-    background-color: #f81937;
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    border-radius: 2px;
-}
-.gpt-sr-popup button:disabled {
-    background-color: #ccc;
-    color: #888;
-    cursor: not-allowed;
-}
-.gpt-sr-close-btn {
-    position: absolute;
-    top: 0px;
-    right: 10px;
-    padding: 5px;
-    background-color: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 20px;
-    color: #888;
-}
-
-.gpt-sr-starting-btn {
-    position: absolute;
-    top: 10px;
-    right: 40px;
-    font-size: 14px;
-    padding: 2px 8px;
-    background-color: #f81937;
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    border-radius: 2px;
-}
-
-.unresolved {
-    color: #F24C3D;
-}
-
-.generating {
-    color: #eec80c;
-}
-
-.generated {
-    color: #f26b22;
-}
-
-.published {
-    color: #007bff;
-}
-
-.queuing{
-    color: #25b9c7;
-}
-
-.collect_completed{
-    color: #9414de;
-}
-
-.custom-popup {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1000;
-}
-
-.custom-popup-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    z-index: 1001;
-}
-
-.custom-popup-content {
-    position: absolute;
-    top: 50%;
+    top: 20px;
     left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: #FFF;
-    color: #000;
-    text-align: center;
-    border-radius: 6px;
-    padding: 15px 15px 15px 15px;
-    z-index: 1002;
-}
-
-.custom-popup-question {
-    display: inline-block;
-    margin-bottom: 5px;
-    font-weight: bold;
-    font-size: 14px;
-}
-
-.custom-popup-close-btn {
-    display: inline-block;
-    padding: 5px 0;
-    background-color: #FFF;
-    color: #007bff;
-    border: none;
-    cursor: pointer;
-    margin-top: 5px;
-    border-top: 1px solid #F2F2F2;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.custom-popup-close-btn:last-child {
-    margin-right: 0;
-}
-
-.custom-loading-progress-bar {
-    width: 100%;
-    height: 10px;
-    background-color: #f1f1f1;
-    position: absolute;
-    overflow: hidden;
-    border-radius: 5px;
-    top: 2px;
-    z-index: 1002;
-}
-
-.custom-loading-progress-bar .custom-progress {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    background-color: #007bff;
-    animation: loadingAnimation 2s linear infinite;
-}
-
-@keyframes loadingAnimation {
-    0% {
-        left: -100%;
-        width: 100%;
-    }
-    50% {
-        left: 100%;
-        width: 0;
-    }
-    100% {
-        left: 100%;
-        width: 0;
-    }
-}
-
-
-.gpt-sr-toggle-arrow:hover {
-    background-color: #d61730;
-}
-
-/* 收起状态的侧边栏 - 确保有正确的过渡效果 */
-.gpt-sr-sidebar.collapsed {
-    transform: translateY(-50%) translateX(150%);
-    opacity: 0;
-    visibility: hidden;
-}
-
-/* 按钮组样式调整 */
-.gpt-sr-button-group {
+    transform: translateX(-50%) translateY(-160%);
     display: flex;
-    flex-direction: column;
-    gap: 10px;
-    width: 100%; /* 确保按钮组占满容器宽度 */
-}
-
-.gpt-sr-btn {
-    padding: 8px 12px;
-    background-color: #f81937;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.3s;
-    white-space: nowrap;
-    text-align: center;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    width: 100%; /* 确保按钮占满容器宽度 */
-    overflow: visible; /* 确保内容不被裁剪 */
-}
-
-.gpt-sr-btn:hover {
-    background-color: #d61730;
-}
-
-.gpt-sr-btn:disabled {
-    background-color: #ccc;
-    color: #888;
-    cursor: not-allowed;
-}
-
-/* 修改箭头样式 - 调整位置使其贴在右侧 */
-.gpt-sr-toggle-arrow {
-    position: fixed;
-    right: 20px; /* 贴近右侧边缘 */
-    top: 50%;
-    transform: translateY(-50%);
-    width: 24px;
-    height: 24px;
-    background-color: #f81937;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
     align-items: center;
+    gap: 10px;
+    max-width: 86vw;
+    padding: 12px 14px 12px 12px;
+    background: #fff;
+    color: #1f2329;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.16);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.5;
+    z-index: 2147483000;
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+.xhs-toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.xhs-toast-icon {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f01437 0%, #d61030 100%);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+}
+.xhs-toast-icon::before { content: "i"; font-style: italic; font-family: Georgia, serif; }
+
+.xhs-toast-msg {
+    flex: 1;
+    word-break: break-word;
+}
+
+.xhs-toast-close {
+    flex: none;
+    border: none;
+    background: transparent;
     cursor: pointer;
-    color: white;
-    font-weight: bold;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    z-index: 10001;
-    transition: transform 0.3s, right 0.3s;
+    color: #8f959e;
+    font-size: 18px;
+    line-height: 1;
+    padding: 0 2px;
+    transition: color 0.2s;
 }
-
-/* 收起状态的箭头位置和旋转 - 修正旋转方向 */
-.gpt-sr-toggle-arrow.collapsed {
-    transform: translateY(-50%) rotate(0deg); /* 收起状态下不旋转 */
-    right: 20px; /* 保持位置不变 */
-}
-
-/* 展开状态的箭头旋转 */
-.gpt-sr-toggle-arrow:not(.collapsed) {
-    transform: translateY(-50%) rotate(180deg); /* 展开状态下旋转180度 */
-}
-
-/* 修改侧边栏样式 - 确保有正确的过渡效果 */
-.gpt-sr-sidebar {
-    position: fixed;
-    right: 50px; /* 与箭头保持距离，避免重叠 */
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 10000;
-    background-color: rgba(255, 255, 255, 0.95);
-    padding: 10px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    width: auto;
-    max-width: 150px;
-    transition: all 0.3s ease;
-    overflow: hidden;
-}
+.xhs-toast-close:hover { color: #1f2329; }

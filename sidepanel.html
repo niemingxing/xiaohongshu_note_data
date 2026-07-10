@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>小红书笔记下载工具</title>
+	<link rel="stylesheet" href="css/sidepanel.css">
+</head>
+<body>
+<header class="app-header">
+	<img class="app-logo" src="icon48.png" alt="logo">
+	<div class="app-title">
+		<h1>小红书笔记下载</h1>
+		<span class="app-subtitle">让小红书运营更简单</span>
+	</div>
+</header>
+
+<nav class="tabs" role="tablist">
+	<button class="tab active" data-tab="collect">采集</button>
+	<button class="tab" data-tab="settings">设置</button>
+	<button class="tab" data-tab="logs">日志 <span id="logBadge" class="badge" hidden>0</span></button>
+</nav>
+
+<main class="content">
+	<!-- 采集 -->
+	<section class="panel active" id="panel-collect">
+		<div class="hero">
+			<div class="hero-top">
+				<span class="status-pill" id="statusPill">
+					<span class="dot" id="pageDot"></span>
+					<span id="pageTypeText">检测中…</span>
+				</span>
+				<div class="hero-tools">
+					<button class="icon-btn ghost" id="clearData" title="清空采集数据">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<polyline points="3 6 5 6 21 6"/>
+							<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+							<line x1="10" y1="11" x2="10" y2="17"/>
+							<line x1="14" y1="11" x2="14" y2="17"/>
+						</svg>
+					</button>
+					<button class="icon-btn ghost" id="refreshPage" title="重新检测">↻</button>
+				</div>
+			</div>
+			<div class="hero-count">
+				<span class="hero-num" id="statCount">0</span>
+				<span class="hero-unit">条</span>
+			</div>
+			<div class="hero-label">已采集数据</div>
+		</div>
+
+		<button class="btn btn-primary btn-lg" id="btnStart">
+			<span class="btn-icon">
+				<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.14v13.72a1 1 0 0 0 1.54.84l10.29-6.86a1 1 0 0 0 0-1.68L9.54 4.3A1 1 0 0 0 8 5.14z"/></svg>
+			</span>
+			开始采集
+		</button>
+
+		<div class="actions-row">
+			<button class="btn btn-tile" id="btnSingle">
+				<span class="tile-icon">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+						<polyline points="14 2 14 8 20 8"/>
+						<line x1="12" y1="18" x2="12" y2="12"/>
+						<line x1="9" y1="15" x2="15" y2="15"/>
+					</svg>
+				</span>
+				<span>采集单篇</span>
+			</button>
+			<button class="btn btn-tile" id="btnExport">
+				<span class="tile-icon">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+						<polyline points="7 10 12 15 17 10"/>
+						<line x1="12" y1="15" x2="12" y2="3"/>
+					</svg>
+				</span>
+				<span>导出 CSV</span>
+			</button>
+		</div>
+
+		<div class="live-box">
+			<div class="live-head">
+				<span class="live-dot"></span> 实时状态
+			</div>
+			<div class="live-line" id="latestLog">等待操作…</div>
+		</div>
+
+		<p class="hint" id="collectHint">
+			打开小红书<b>搜索页 / 推荐页 / 博主主页</b>，点击「开始采集」即可，进度实时显示于「日志」。
+		</p>
+	</section>
+
+	<!-- 设置 -->
+	<section class="panel" id="panel-settings">
+		<div class="field">
+			<div class="field-label-row">
+				<label for="mKey">密钥</label>
+				<a class="get-key-link" href="https://github.com/niemingxing/short_video_tools" target="_blank">获取密钥 →</a>
+			</div>
+			<input type="password" id="mKey" placeholder="请输入密钥">
+		</div>
+		<div class="field-row">
+			<div class="field">
+				<label for="downLoadNums">采集数量</label>
+				<input type="number" id="downLoadNums" value="30" min="1">
+			</div>
+			<div class="field">
+				<label for="timeInterval">采集间隔(秒)</label>
+				<input type="number" id="timeInterval" value="1" min="0">
+			</div>
+		</div>
+
+		<div class="section-divider">飞书多维表格配置</div>
+
+		<div class="field">
+			<label for="appId">App ID</label>
+			<input type="text" id="appId" placeholder="cli_xxx">
+		</div>
+		<div class="field">
+			<label for="appSecret">App Secret</label>
+			<input type="password" id="appSecret" placeholder="应用密钥">
+		</div>
+		<div class="field">
+			<label for="appToken">App Token</label>
+			<input type="text" id="appToken" placeholder="多维表格 App Token">
+		</div>
+		<div class="field">
+			<label for="tableId">Table ID</label>
+			<input type="text" id="tableId" placeholder="留空则自动新建表格">
+		</div>
+
+		<button class="btn btn-primary" id="saveButton">保存设置</button>
+		<div class="save-tip" id="saveTip"></div>
+	</section>
+
+	<!-- 日志 -->
+	<section class="panel" id="panel-logs">
+		<div class="logs-toolbar">
+			<label class="autoscroll">
+				<input type="checkbox" id="autoScroll" checked> 自动滚动
+			</label>
+			<button class="text-btn" id="clearLogs">清空日志</button>
+		</div>
+		<ul class="log-list" id="logList"></ul>
+	</section>
+</main>
+
+<!-- 自定义确认弹窗 -->
+<div class="modal-mask" id="modalMask" hidden>
+	<div class="modal-card" role="dialog" aria-modal="true">
+		<div class="modal-icon" id="modalIcon">!</div>
+		<div class="modal-title" id="modalTitle">提示</div>
+		<div class="modal-msg" id="modalMsg"></div>
+		<div class="modal-actions">
+			<button class="btn btn-ghost" id="modalCancel">取消</button>
+			<button class="btn btn-primary" id="modalOk">确定</button>
+		</div>
+	</div>
+</div>
+
+<script type="text/javascript" src="js/sidepanel.js"></script>
+</body>
+</html>
