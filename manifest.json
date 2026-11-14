@@ -1,7 +1,7 @@
 {
 	"manifest_version": 3,
 	"name": "小红书笔记下载工具",
-	"version": "1.2",
+	"version": "1.3",
 	"description": "小红书笔记下载工具，让小红书运营更简单。",
 	"author": "niemingxing",
 	"icons":
@@ -26,7 +26,8 @@
 	"host_permissions": [
 		"https://api.kaipm.com/*",
 		"https://open.feishu.cn/*",
-		"https://www.xiaohongshu.com/*"
+		"https://www.xiaohongshu.com/*",
+		"https://*.xhscdn.com/*"
 	],
 	"content_scripts":
 	[

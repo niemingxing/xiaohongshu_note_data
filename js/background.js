@@ -8,14 +8,32 @@ chrome.sidePanel
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         if(request.type == 'check_mkey')
         {
+            // 侧边栏导出 Excel 前校验密钥，直接把结果回传给侧边栏
             initSetting(function (){
                 checkMKey(function (data){
-                    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-                        chrome.tabs.sendMessage(tabs[0].id, {'data':data,type:'check_mkey_complete'});
-                    });
+                    sendResponse(data);
                 });
             });
-            sendResponse({ farewell: "Background runtime onMessage!" });
+            return true; // 表示将发送异步响应
+        }else if(request.type == 'get_note_state')
+        {
+            // content-script 运行在隔离环境读不到页面变量，这里到页面主环境读取 __INITIAL_STATE__ 中的笔记封面
+            chrome.scripting.executeScript({
+                target: { tabId: sender.tab.id },
+                world: 'MAIN',
+                args: [request.noteId],
+                func: (noteId) => {
+                    try {
+                        const note = window.__INITIAL_STATE__.note.noteDetailMap[noteId].note;
+                        const image = (note.imageList || [])[0] || {};
+                        return { cover: image.urlDefault || image.urlPre || '' };
+                    } catch (e) {
+                        return null;
+                    }
+                }
+            }).then((results) => sendResponse(results && results[0] ? results[0].result : null))
+              .catch(() => sendResponse(null));
+            return true; // 表示将发送异步响应
         }else if (request.action === "proxyRequest") {
             (async () => {
                 try {

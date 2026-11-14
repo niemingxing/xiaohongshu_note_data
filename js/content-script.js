@@ -9,6 +9,7 @@ let feishuAppToken = "";
 let feishuTableId = "";
 let batchFeishuData = [];
 let timeInterval = 0;
+let commentNums = 0;
 let tableHeader = [];
 let tableKeys = [];
 
@@ -69,22 +70,6 @@ function clearCollected() {
 	batchFeishuData = [];
 	saveCollected();
 	sendStat(0);
-}
-
-/**
- * 保存内容为csv文件
- * @param csvContent
- */
-function downloadCsv(csvContent)
-{
-	// 创建一个 Blob 对象，将内容保存为 CSV 文件
-	var blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
-
-	// 生成一个临时下载链接并下载文件
-	var link = document.createElement("a");
-	link.href = URL.createObjectURL(blob);
-	link.download = "data(" + currentDomain+ ").csv";
-	link.click();
 }
 
 function initTableInfo() {
@@ -209,7 +194,7 @@ async function addFeishuData(data) {
 					logMsg('该笔记已存在于飞书表格，跳过', 'warn');
 				} else {
 					logMsg('已加入飞书同步队列', 'success');
-					addUniqueData(batchFeishuData,data,'url');
+					addUniqueNote(batchFeishuData,data);
 				}
 			} else {
 				logMsg('查询飞书数据失败：' + (jsonData.msg || jsonData.code), 'error');
@@ -280,7 +265,7 @@ function initOtherActon()
 			// 再次调用自身
 			setTimeout(initOtherActon, 1500);
 		} else {
-			logMsg(`采集完成，共 ${dataNums} 条，可点击「导出 CSV」保存`, 'success');
+			logMsg(`采集完成，共 ${dataNums} 条，可点击「导出 Excel」保存`, 'success');
 		}
     });
 }
@@ -340,32 +325,6 @@ function addStylesheet(url) {
 	linkElement.type = "text/css";
 	linkElement.href = chrome.runtime.getURL(url);
 	document.head.appendChild(linkElement);
-}
-
-/**
- * 数据下载：把已采集数据导出为 CSV
- */
-function startDataDownload()
-{
-	if(tableHeader.length == 0) initTableInfo();
-	let listData = [];
-	let pageType = getPageType();
-	if(pageType == "search_result_note" || pageType == "user_profile" || pageType == "explore_result_note")
-	{
-		listData = downloadData;
-	}
-	else if(pageType == "search_result_user")
-	{
-		listData = downloadUserData;
-	}
-	if(listData.length == 0)
-	{
-		logMsg('暂无可导出的数据，请先点击「开始采集」', 'warn');
-		return;
-	}
-	let csvContent = convertToCSVContent(listData,tableHeader,tableKeys);
-	downloadCsv(csvContent);
-	logMsg(`已导出 ${listData.length} 条数据到 CSV`, 'success');
 }
 
 /**
@@ -446,8 +405,11 @@ async function getSearchVideoData()
 				let likeText = likeItem ? likeItem.innerText : "0";
 				likeText = likeText.trim() == "赞" ? "0" : likeText;
 				let likeNums = convertToNumber(likeText);
+				let coverImg = linkItem.querySelector("img");
+				let cover = coverImg ? coverImg.src : "";
+				let noteType = node.querySelector(".play-icon") ? "视频" : "图文";
 
-				if(downloadData.some(item => item["url"] === url)) continue;
+				if(hasNote(downloadData, url)) continue;
 
 				if(downloadNums > 0 && downloadData.length >= downloadNums) break;
 
@@ -498,6 +460,7 @@ async function getSearchVideoData()
 						datetime = parseDate(date);
 					}
 				}
+				let comments = noteContainer ? await collectComments(noteContainer, commentNums) : { text: "", count: 0 };
 				
 				document.querySelector("div.close-circle").click();
 
@@ -517,10 +480,15 @@ async function getSearchVideoData()
 					"chat_nums": `${chatNums}`,
 					"date": date,
 					"datetime": datetime,
+					"note_type": noteType,
+					"cover": cover,
+					"comments": comments.text,
+					"comment_collected": comments.count,
 				};
-				addUniqueData(downloadData,dataItem,'url');
-				addUniqueData(batchFeishuData,dataItem,'url');
-				logMsg(`已采集(${downloadData.length})：${title || author || '无标题笔记'}`, 'info');
+				addUniqueNote(downloadData,dataItem);
+				addUniqueNote(batchFeishuData,dataItem);
+				saveCollected();
+				logMsg(`已采集(${downloadData.length})：${title || author || '无标题笔记'}，评论 ${comments.count} 条`, 'info');
 				sendStat(downloadData.length);
 			}
 		}
@@ -587,13 +555,18 @@ async function getCurrentNodeData(){
 
 	if(noteContainer) {
 
-		let authorContainer= noteContainer.querySelector("div.author-container");
-		let titleItem = noteContainer.querySelector("div#detail-title");
-		let authorItem = authorContainer.querySelector("a.name");
-		author = authorItem.textContent;
-		userUrl = authorItem.href;
-		title = titleItem ? titleItem.innerText : "";
 		url = window.location.href;
+		if(hasNote(downloadData, url)) {
+			logMsg('该笔记已采集过，跳过', 'warn');
+			showPromptMessagePopup("该笔记已采集过", 2);
+			return;
+		}
+		// 标题节点现为 h1#detail-title，不限定标签以兼容改版
+		let titleItem = noteContainer.querySelector("#detail-title");
+		let authorItem = noteContainer.querySelector("div.author-container a.name");
+		author = authorItem ? authorItem.textContent.trim() : "";
+		userUrl = authorItem ? authorItem.href : "";
+		title = titleItem ? titleItem.innerText.trim() : "";
 		let descElement = noteContainer.querySelector("div#detail-desc");
 		if(descElement) {
 			desc = descElement.innerText;
@@ -605,7 +578,8 @@ async function getCurrentNodeData(){
 			});
 			tags = tagsArr.join(" ");
 		}
-		let interactContainer = noteContainer.querySelector("div.interact-container");
+		// 互动区缺失时退回在整个笔记容器内查找
+		let interactContainer = noteContainer.querySelector("div.interact-container") || noteContainer;
 		//获取点赞数
 		let likeElement = interactContainer.querySelector("span.like-wrapper");
 		if(likeElement) {
@@ -635,6 +609,9 @@ async function getCurrentNodeData(){
 			date = dateElement.innerText;
 			datetime = parseDate(date);
 		}
+		let noteType = noteContainer.querySelector(".player-container") ? "视频" : "图文";
+		let cover = await getDetailCover(noteContainer, url);
+		let comments = await collectComments(noteContainer, commentNums);
 		let dataItem = {
 			"author": author,
 			"author_url": userUrl,
@@ -650,10 +627,14 @@ async function getCurrentNodeData(){
 			"chat_nums": `${chatNums}`,
 			"date": date,
 			"datetime": datetime,
+			"note_type": noteType,
+			"cover": cover,
+			"comments": comments.text,
+			"comment_collected": comments.count,
 		};
-		addUniqueData(downloadData,dataItem,'url');
+		addUniqueNote(downloadData,dataItem);
 		updateDownloadButtonVideoCount();
-		logMsg(`已采集单篇：${title || author || '无标题笔记'}`, 'success');
+		logMsg(`已采集单篇：${title || author || '无标题笔记'}，评论 ${comments.count} 条`, 'success');
 		await addFeishuData(dataItem);
 	} else {
 		logMsg('未找到笔记内容，请在笔记详情页再试', 'error');
@@ -661,10 +642,122 @@ async function getCurrentNodeData(){
 	}
 }
 
-function addUniqueData(arr, newData,key) {
-	if (!arr.some(item => item[key] === newData[key])) {
-		arr.push(newData);
+/**
+ * 从笔记地址中提取笔记 ID（兼容 /explore/<id>、/search_result/<id>、/user/profile/<uid>/<id>）
+ * @param url
+ * @returns {string}
+ */
+function getNoteId(url)
+{
+	try {
+		let ids = new URL(url).pathname.match(/[0-9a-f]{24}/g);
+		return ids ? ids[ids.length - 1] : "";
+	} catch (e) {
+		return "";
 	}
+}
+
+/**
+ * 获取笔记详情页封面（图文取轮播第一张，视频取播放器封面）
+ * @param noteContainer
+ * @param url 笔记地址
+ * @returns {Promise<string>}
+ */
+async function getDetailCover(noteContainer, url)
+{
+	// 轮播开启了 loop，首尾有复制出来的 slide，需按真实下标 0 取第一张
+	let img = noteContainer.querySelector('.swiper-slide[data-swiper-slide-index="0"]:not(.swiper-slide-duplicate) img')
+		|| noteContainer.querySelector(".media-container img");
+	if(img && img.src) return img.src;
+	let poster = noteContainer.querySelector(".xgplayer-poster");
+	if(poster) {
+		let match = getComputedStyle(poster).backgroundImage.match(/url\("?(.+?)"?\)/);
+		if(match) return match[1];
+	}
+	// 视频开始播放后封面会从页面上移除，退回读取页面 __INITIAL_STATE__ 里的封面
+	let noteId = getNoteId(url);
+	if(!noteId) return "";
+	try {
+		let state = await chrome.runtime.sendMessage({ type: 'get_note_state', noteId: noteId });
+		return (state && state.cover) || "";
+	} catch (e) {
+		return "";
+	}
+}
+
+/**
+ * 解析一条评论
+ * @param item .comment-item 节点
+ * @returns {string} 如：小思：内容（4小时前 陕西 · 赞 1）
+ */
+function formatCommentItem(item)
+{
+	let nameItem = item.querySelector(".author a.name");
+	let textItem = item.querySelector(".content .note-text");
+	let dateItem = item.querySelector(".info .date span:not(.location)");
+	let locationItem = item.querySelector(".info .date span.location");
+	let likeItem = item.querySelector(".interactions .like .count");
+	let name = nameItem ? nameItem.innerText.trim() : "";
+	let text = textItem ? textItem.innerText.trim() : "";
+	let date = dateItem ? dateItem.innerText.trim() : "";
+	let location = locationItem ? locationItem.innerText.trim() : "";
+	let like = likeItem ? likeItem.innerText.trim() : "0";
+	like = like == "赞" ? "0" : like;
+	let meta = [date, location].filter(Boolean).join(" ");
+	return `${name}：${text}（${meta ? meta + " · " : ""}赞 ${like}）`;
+}
+
+/**
+ * 采集笔记弹窗/详情页里的一级评论（不含回复），滚动加载直到达到数量上限或到底
+ * @param noteContainer
+ * @param maxNums 每篇评论数，<=0 表示不采集
+ * @returns {Promise<{text: string, count: number}>} text 为多行文本，每行一条评论
+ */
+async function collectComments(noteContainer, maxNums)
+{
+	if(!maxNums || maxNums <= 0) return { text: "", count: 0 };
+	const parentSelector = ".comments-container .list-container > .parent-comment";
+	let scroller = noteContainer.querySelector(".note-scroller");
+	let lastCount = -1;
+	let staleRounds = 0;
+	while(true)
+	{
+		let count = noteContainer.querySelectorAll(parentSelector).length;
+		if(count >= maxNums || noteContainer.querySelector(".comments-container .end-container")) break;
+		staleRounds = count == lastCount ? staleRounds + 1 : 0;
+		// 连续 3 轮没有新评论加载出来（无评论/未登录/加载失败）就停止
+		if(staleRounds >= 3 || !scroller) break;
+		lastCount = count;
+		scroller.scrollTop = scroller.scrollHeight;
+		await new Promise(resolve => setTimeout(resolve, 1000));
+	}
+
+	let lines = [];
+	let parents = Array.from(noteContainer.querySelectorAll(parentSelector)).slice(0, maxNums);
+	for(let parent of parents)
+	{
+		// 只取一级评论，回复在 .reply-container 内，不采集
+		let item = parent.querySelector(":scope > .comment-item");
+		if(item) lines.push(`${lines.length + 1}. ${formatCommentItem(item)}`);
+	}
+	return { text: lines.join("\n"), count: lines.length };
+}
+
+/**
+ * 判断笔记是否已采集。按笔记 ID 比较：同一篇笔记在搜索页是 /search_result/<id>，弹窗/详情页是 /explore/<id>
+ * @param arr
+ * @param url
+ * @returns {boolean}
+ */
+function hasNote(arr, url)
+{
+	let noteId = getNoteId(url) || url;
+	return arr.some(item => (getNoteId(item.url) || item.url) === noteId);
+}
+
+function addUniqueNote(arr, newData)
+{
+	if(!hasNote(arr, newData.url)) arr.push(newData);
 }
 
 function getMatchingDOMElement(items, targetText) {
@@ -698,21 +791,6 @@ function convertToNumber(str) {
 	return str;
 }
 
-/**
- * 格式化csv内容特殊字符
- * @param value
- * @returns {string}
- */
-function formatCSVValue(value) {
-	if (typeof value === 'string') {
-		if (/[",\n\t]/.test(value)) {
-			value = value.replace(/"/g, '""');
-			value = `"${value}"`;
-		}
-	}
-	return value;
-}
-
 function parseDate(input) {
     const today = new Date();
 
@@ -735,8 +813,8 @@ function parseDate(input) {
         return formatDateTime(date);
     }
 
-    // 3. 判断是否包含 N 天前
-    const daysAgoPattern = /(\d+) 天前/;
+    // 3. 判断是否包含 N 天前（页面上可能是「9天前」或「编辑于 9 天前」）
+    const daysAgoPattern = /(\d+)\s*天前/;
     const daysMatch = input.match(daysAgoPattern);
     if (daysMatch) {
         const daysAgo = parseInt(daysMatch[1], 10);
@@ -747,7 +825,7 @@ function parseDate(input) {
     }
 
     // 4. 判断是否包含昨天+时分
-    const yesterdayPattern = /昨天 (\d{2}:\d{2})/;
+    const yesterdayPattern = /昨天\s*(\d{1,2}:\d{2})/;
     const yesterdayMatch = input.match(yesterdayPattern);
     if (yesterdayMatch) {
         const yesterday = new Date(today);
@@ -758,13 +836,26 @@ function parseDate(input) {
     }
 
     // 5. 判断是否包含今天+时分
-    const todayPattern = /今天 (\d{2}:\d{2})/;
+    const todayPattern = /今天\s*(\d{1,2}:\d{2})/;
     const todayMatch = input.match(todayPattern);
     if (todayMatch) {
         const todayWithTime = new Date(today);
         const [hours, minutes] = todayMatch[1].split(':');
         todayWithTime.setHours(Number(hours), Number(minutes), 0);
         return formatDateTime(todayWithTime);
+    }
+
+    // 6. 判断是否包含 N 小时前 / N 分钟前 / 刚刚
+    const hoursMatch = input.match(/(\d+)\s*小时前/);
+    if (hoursMatch) {
+        return formatDateTime(new Date(today.getTime() - parseInt(hoursMatch[1], 10) * 3600 * 1000));
+    }
+    const minutesMatch = input.match(/(\d+)\s*分钟前/);
+    if (minutesMatch) {
+        return formatDateTime(new Date(today.getTime() - parseInt(minutesMatch[1], 10) * 60 * 1000));
+    }
+    if (input.includes("刚刚")) {
+        return formatDateTime(today);
     }
 
     // 如果没有匹配到，返回 null
@@ -782,18 +873,6 @@ function formatDateTime(date) {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
-/**
- * 把数组转换成csv内容
- * @param data
- * @returns {string}
- */
-function convertToCSVContent(data,header=[],keysArr = []) {
-	let pHeader = header.length == 0 ? ["作者", "标题", "点赞文本", "点赞数量", "视频地址", "日期"] : header;
-	let pKeysArr = keysArr.length ==0 ? ["auther", "title", "like_text", "like_nums", "video_url", "date_str"] : keysArr;
-	const rows = data.map(row => pKeysArr.map(key => formatCSVValue(row[key])).join(","));
-	return [pHeader.join(",")].concat(rows).join("\n");
-}
-
 function initSetting(callback)
 {
     // 获取存储的值
@@ -803,6 +882,7 @@ function initSetting(callback)
 		}
         downloadNums = parseInt(getSettingValue("download_nums",30));
 		timeInterval = parseInt(getSettingValue("time_interval",1));
+		commentNums = parseInt(getSettingValue("comment_nums",20)) || 0;
         feishuAppId = getSettingValue("app_id","");
 		feishuAppSecret = getSettingValue("app_secret","");
 		feishuAppToken = getSettingValue("app_token","");
@@ -836,20 +916,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
 	if(message && message.type == 'get_stat') { sendResponse({ count: getSearchVideoCount() }); return true; }
 	if(message && message.type == 'clear_data') { clearCollected(); sendResponse({ ok: true }); return true; }
 	window.focus();
-	if(message.type == 'check_mkey_complete')
-	{
-		if(message.data && message.data.hasOwnProperty("code") && message.data.code != 0)
-		{
-			logMsg(message.data.message || '密钥校验未通过', 'error');
-			showPromptMessagePopup(message.data.message);
-		}
-		else
-		{
-			// 每次操作前重新读取最新设置，确保侧边栏改动即时生效
-			initSetting(function() { startDataDownload(); });
-		}
-	}
-	else if(message.type == 'goto_start')
+	if(message.type == 'goto_start')
 	{
 		initSetting(function() { goStart(); });
 	}

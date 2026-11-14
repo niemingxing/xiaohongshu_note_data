@@ -76,7 +76,7 @@
 						<line x1="12" y1="15" x2="12" y2="3"/>
 					</svg>
 				</span>
-				<span>导出 CSV</span>
+				<span>导出 Excel</span>
 			</button>
 		</div>
 
@@ -110,6 +110,10 @@
 				<label for="timeInterval">采集间隔(秒)</label>
 				<input type="number" id="timeInterval" value="1" min="0">
 			</div>
+		</div>
+		<div class="field">
+			<label for="commentNums">每篇评论数（0 为不采集）</label>
+			<input type="number" id="commentNums" value="20" min="0">
 		</div>
 
 		<div class="section-divider">飞书多维表格配置</div>
@@ -160,6 +164,7 @@
 	</div>
 </div>
 
+<script type="text/javascript" src="js/lib/exceljs.min.js"></script>
 <script type="text/javascript" src="js/sidepanel.js"></script>
 </body>
 </html>

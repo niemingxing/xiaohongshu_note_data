@@ -190,11 +190,175 @@ document.getElementById('btnSingle').addEventListener('click', async () => {
 });
 
 document.getElementById('btnExport').addEventListener('click', async () => {
-	const tab = await getActiveTab();
-	if (tab) await ensureContentScript(tab.id);
-	addLog('正在校验密钥并导出 CSV…', 'info');
-	chrome.runtime.sendMessage({ type: 'check_mkey' }, () => void chrome.runtime.lastError);
+	const btn = document.getElementById('btnExport');
+	if (btn.disabled) return;
+	btn.disabled = true;
+	try {
+		await exportExcel();
+	} catch (e) {
+		console.log('导出 Excel 失败：', e);
+		addLog('导出 Excel 失败：' + e.message, 'error');
+	} finally {
+		btn.disabled = false;
+	}
 });
+
+/* ============ 导出 Excel ============ */
+const NOTE_COLUMNS = [
+	{ header: '封面', key: 'cover', width: 16 },
+	{ header: '笔记类型', key: 'note_type', width: 8 },
+	{ header: '博主名', key: 'author', width: 14 },
+	{ header: '博主地址', key: 'author_url', width: 24 },
+	{ header: '笔记标题', key: 'title', width: 24 },
+	{ header: '笔记内容', key: 'desc', width: 40 },
+	{ header: '标签', key: 'tags', width: 20 },
+	{ header: '笔记地址', key: 'url', width: 24 },
+	{ header: '点赞', key: 'like_text', width: 8 },
+	{ header: '点赞数', key: 'like_nums', width: 9, number: true },
+	{ header: '收藏', key: 'collect_text', width: 8 },
+	{ header: '收藏数', key: 'collect_nums', width: 9, number: true },
+	{ header: '评论', key: 'chat_text', width: 8 },
+	{ header: '评论数', key: 'chat_nums', width: 9, number: true },
+	{ header: '评论内容', key: 'comments', width: 60 },
+	{ header: '日期', key: 'date', width: 14 },
+	{ header: '发布时间', key: 'datetime', width: 19 },
+];
+const USER_COLUMNS = [
+	{ header: '博主名', key: 'author', width: 16 },
+	{ header: '博主地址', key: 'author_url', width: 30 },
+	{ header: '小红书号', key: 'xhs_no', width: 16 },
+	{ header: '粉丝', key: 'fans_text', width: 10 },
+	{ header: '粉丝数', key: 'fans_nums', width: 10, number: true },
+	{ header: '笔记数', key: 'note_nums', width: 10, number: true },
+];
+const COVER_WIDTH = 100; // 封面缩略图宽度(px)
+const EXCEL_CELL_MAX = 32767; // Excel 单元格字符上限
+
+/**
+ * 下载封面并转为 jpeg 缩略图（Excel 不支持 webp）
+ * @returns {Promise<{base64:string,width:number,height:number}|null>} 失败返回 null
+ */
+async function fetchCoverThumb(url) {
+	if (!url) return null;
+	try {
+		const resp = await fetch(url);
+		if (!resp.ok) return null;
+		const bitmap = await createImageBitmap(await resp.blob());
+		const width = COVER_WIDTH;
+		const height = Math.round(bitmap.height * width / bitmap.width);
+		const canvas = document.createElement('canvas');
+		canvas.width = width;
+		canvas.height = height;
+		canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+		bitmap.close();
+		return { base64: canvas.toDataURL('image/jpeg', 0.85), width, height };
+	} catch (e) {
+		console.log('封面下载失败：', url, e);
+		return null;
+	}
+}
+
+/** 限制并发地对数组逐项执行异步任务 */
+async function mapLimit(arr, limit, fn) {
+	const results = new Array(arr.length);
+	let next = 0;
+	async function worker() {
+		while (next < arr.length) {
+			const i = next++;
+			results[i] = await fn(arr[i], i);
+		}
+	}
+	await Promise.all(Array.from({ length: Math.min(limit, arr.length) }, worker));
+	return results;
+}
+
+function cellValue(row, col) {
+	let v = row[col.key];
+	if (v === undefined || v === null) return '';
+	if (col.number) {
+		const n = Number(v);
+		return Number.isFinite(n) ? n : String(v);
+	}
+	v = String(v);
+	return v.length > EXCEL_CELL_MAX ? v.slice(0, EXCEL_CELL_MAX - 1) + '…' : v;
+}
+
+function timestamp() {
+	const d = new Date();
+	return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+}
+
+async function exportExcel() {
+	addLog('正在校验密钥…', 'info');
+	const check = await chrome.runtime.sendMessage({ type: 'check_mkey' });
+	if (!check || (check.hasOwnProperty('code') && check.code != 0)) {
+		addLog((check && check.message) || '密钥校验未通过', 'error');
+		return;
+	}
+
+	const tab = await getActiveTab();
+	const isUserPage = !!(tab && tab.url && tab.url.includes('https://www.xiaohongshu.com/search_result') && tab.url.includes('search_type=user'));
+	const stored = (await chrome.storage.local.get('nmx_xhs_collected')).nmx_xhs_collected || {};
+	const list = (isUserPage ? stored.users : stored.notes) || [];
+	if (list.length === 0) {
+		addLog('暂无可导出的数据，请先点击「开始采集」', 'warn');
+		return;
+	}
+
+	const workbook = new ExcelJS.Workbook();
+	const sheet = workbook.addWorksheet(isUserPage ? '博主' : '笔记');
+	const columns = isUserPage ? USER_COLUMNS : NOTE_COLUMNS;
+	sheet.columns = columns.map((c) => ({ header: c.header, key: c.key, width: c.width }));
+	sheet.getRow(1).font = { bold: true };
+	sheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+	list.forEach((row) => {
+		const values = {};
+		columns.forEach((c) => { values[c.key] = c.key === 'cover' ? '' : cellValue(row, c); });
+		const r = sheet.addRow(values);
+		r.alignment = { vertical: 'top', wrapText: true };
+	});
+
+	if (!isUserPage) {
+		addLog(`正在下载 ${list.length} 张封面…`, 'info');
+		let done = 0;
+		const thumbs = await mapLimit(list, 5, async (row) => {
+			const thumb = await fetchCoverThumb(row.cover);
+			done++;
+			if (done % 10 === 0 || done === list.length) latestLog.textContent = `封面下载进度 ${done}/${list.length}`;
+			return thumb;
+		});
+		const coverCol = columns.findIndex((c) => c.key === 'cover');
+		let failed = 0;
+		thumbs.forEach((thumb, i) => {
+			const rowIndex = i + 2; // 第 1 行为表头
+			if (!thumb) {
+				failed++;
+				// 下载失败时保留封面链接，便于手动查看
+				sheet.getRow(rowIndex).getCell(coverCol + 1).value = list[i].cover || '';
+				return;
+			}
+			const imageId = workbook.addImage({ base64: thumb.base64, extension: 'jpeg' });
+			sheet.addImage(imageId, {
+				tl: { col: coverCol + 0.1, row: rowIndex - 1 + 0.1 },
+				ext: { width: thumb.width, height: thumb.height },
+				editAs: 'oneCell',
+			});
+			// 行高单位为磅(pt)，1px ≈ 0.75pt，留出上下边距
+			sheet.getRow(rowIndex).height = Math.max(sheet.getRow(rowIndex).height || 15, (thumb.height + 10) * 0.75);
+		});
+		if (failed > 0) addLog(`${failed} 张封面下载失败，已改为写入封面链接`, 'warn');
+	}
+
+	const buffer = await workbook.xlsx.writeBuffer();
+	const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+	const link = document.createElement('a');
+	link.href = URL.createObjectURL(blob);
+	link.download = `小红书${isUserPage ? '博主' : '笔记'}_${timestamp()}.xlsx`;
+	link.click();
+	setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+	addLog(`已导出 ${list.length} 条数据到 Excel`, 'success');
+}
 
 /* ============ 统计 ============ */
 function setStat(n) {
@@ -271,12 +435,13 @@ const settingIds = {
 	mkey: 'mKey',
 	download_nums: 'downLoadNums',
 	time_interval: 'timeInterval',
+	comment_nums: 'commentNums',
 	app_id: 'appId',
 	app_secret: 'appSecret',
 	app_token: 'appToken',
 	table_id: 'tableId',
 };
-const defaults = { download_nums: 30, time_interval: 1 };
+const defaults = { download_nums: 30, time_interval: 1, comment_nums: 20 };
 
 chrome.storage.local.get('nmx_xhs_setting', (result) => {
 	const s = result.nmx_xhs_setting || {};
